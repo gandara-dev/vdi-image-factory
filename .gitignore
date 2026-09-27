@@ -1,0 +1,10 @@
+.packer.d/
+packer_cache/
+output-*/
+*.box
+*.iso
+*.log
+*.auto.pkrvars.hcl
+demo/*.cast
+TestResults/
+testResults.xml

@@ -1,0 +1,22 @@
+{
+  "applications": [
+    {
+      "name": "7-Zip",
+      "id": "7zip.7zip",
+      "version": "",
+      "enabled": true
+    },
+    {
+      "name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
+      "id": "Microsoft.VCRedist.2015+.x64",
+      "version": "",
+      "enabled": true
+    },
+    {
+      "name": "Notepad++",
+      "id": "Notepad++.Notepad++",
+      "version": "",
+      "enabled": false
+    }
+  ]
+}

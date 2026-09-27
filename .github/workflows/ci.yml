@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pester
+        shell: pwsh
+        run: Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+      - name: Run tests
+        shell: pwsh
+        run: Invoke-Pester -Path ./tests/VdiImageFactory.Tests.ps1 -CI -Output Detailed
+      - name: Verify Windows PowerShell 5.1 compatibility
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Invoke-Pester -Path ./tests/VdiImageFactory.Tests.ps1 -CI -Output Detailed
+      - name: Run the infrastructure-free demo
+        shell: pwsh
+        run: ./scripts/Invoke-VdiImagePipeline.ps1 -Simulation | Out-Null
+
+  powershell-analysis:
+    name: PowerShell analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.24.0 -Scope CurrentUser -Force
+      - name: Analyze PowerShell
+        shell: pwsh
+        run: |
+          $results = @(Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error)
+          $results | Format-Table -AutoSize
+          if ($results.Count -gt 0) { throw 'PSScriptAnalyzer reported findings.' }
+
+  diagram-validation:
+    name: Mermaid diagram validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render versioned Mermaid sources
+        run: |
+          for diagram in docs/diagrams/*.mmd; do
+            output="/tmp/$(basename "${diagram%.mmd}").svg"
+            docker run --rm --volume "$PWD:/data:ro" \
+              ghcr.io/mermaid-js/mermaid-cli/mermaid-cli@sha256:a6fb0574dded4086888b5e38476899c9aff8963196f689f11a0f8fceee588ce1 \
+              -i "/data/$diagram" -o "$output" -b white
+          done
+
+  packer-validate:
+    name: Packer validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-packer@v3.4.0
+        with:
+          version: 1.16.1
+      - name: Initialize plugins
+        run: packer init ./packer
+      - name: Check formatting
+        run: packer fmt -check -recursive ./packer
+      - name: Validate Hyper-V template
+        run: >-
+          packer validate
+          -var 'iso_url=https://example.test/windows.iso'
+          -var 'iso_checksum=sha256:0000000000000000000000000000000000000000000000000000000000000000'
+          -var 'winrm_password=Ci-Ephemeral-Password123'
+          ./packer
+
+  ansible-lint:
+    name: Ansible validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Ansible tooling
+        run: pip install 'ansible-core==2.19.2' 'ansible-lint==25.9.0'
+      - name: Install collections
+        run: ansible-galaxy collection install -r ansible/requirements.yml
+      - name: Syntax check
+        run: ansible-playbook --syntax-check -i ansible/inventory.example.ini ansible/playbook.yml
+      - name: Lint playbook
+        run: ansible-lint ansible/playbook.yml

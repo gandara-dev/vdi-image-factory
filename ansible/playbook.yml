@@ -1,0 +1,48 @@
+---
+- name: Customize a Windows VDI golden image
+  hosts: golden_image
+  gather_facts: false
+  vars:
+    vdi_factory_root: C:\ProgramData\VdiImageFactory
+    vdi_image_version: dev
+    vdi_run_optimizer: false
+    vdi_optimizer_engine: C:\CitrixOptimizer\CtxOptimizerEngine.ps1
+    vdi_optimizer_template: AutoSelect
+
+  tasks:
+    - name: Create the factory directory
+      ansible.windows.win_file:
+        path: "{{ vdi_factory_root }}"
+        state: directory
+
+    - name: Copy the PowerShell module
+      ansible.windows.win_copy:
+        src: ../src/VdiImageFactory/
+        dest: "{{ vdi_factory_root }}\\VdiImageFactory\\"
+
+    - name: Copy the application manifest
+      ansible.windows.win_copy:
+        src: ../config/apps.json
+        dest: "{{ vdi_factory_root }}\\apps.json"
+
+    - name: Install image applications
+      ansible.windows.win_powershell:
+        script: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module '{{ vdi_factory_root }}\VdiImageFactory\VdiImageFactory.psd1' -Force
+          Install-VdiApplication -ManifestPath '{{ vdi_factory_root }}\apps.json'
+
+    - name: Run Citrix Optimizer
+      when: vdi_run_optimizer | bool
+      ansible.windows.win_powershell:
+        script: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module '{{ vdi_factory_root }}\VdiImageFactory\VdiImageFactory.psd1' -Force
+          Invoke-CitrixOptimizer -EnginePath '{{ vdi_optimizer_engine }}' -Template '{{ vdi_optimizer_template }}' -Mode Execute
+
+    - name: Record image metadata and validate seal readiness
+      ansible.windows.win_powershell:
+        script: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module '{{ vdi_factory_root }}\VdiImageFactory\VdiImageFactory.psd1' -Force
+          Complete-VdiImage -ManifestPath '{{ vdi_factory_root }}\image-manifest.json' -ImageVersion '{{ vdi_image_version }}'
