@@ -82,6 +82,7 @@ Describe 'Complete-VdiImage' {
     }
 
     It 'writes a machine-readable manifest in a live filesystem run' {
+        Mock Test-PendingReboot -ModuleName VdiImageFactory { $false }
         $manifestPath = Join-Path $TestDrive 'image-manifest.json'
         $result = Complete-VdiImage `
             -ManifestPath $manifestPath `
