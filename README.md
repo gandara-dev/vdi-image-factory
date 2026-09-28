@@ -88,14 +88,32 @@ An entry is installed when `enabled` is not `false`:
   "name": "7-Zip",
   "id": "7zip.7zip",
   "version": "",
+  "scope": "machine",
   "enabled": true
 }
 ```
 
-The ID is passed to WinGet with exact matching, silent mode, and agreement
-flags. Leave `version` empty for the source's current version, or pin a version
-that is actually available in your approved repository. Production environments
-should use a controlled WinGet source or internal package repository.
+The default developer image includes Chrome, Visual Studio Code, Git, GitHub CLI,
+Python 3.13, Node.js LTS, PowerShell 7, .NET SDK 10, Go, OpenJDK 21, Rustup,
+Azure CLI, Azure Storage Explorer, Terraform, kubectl, Windows Terminal, Postman,
+Microsoft 365 Apps for enterprise, 7-Zip, and the Visual C++ runtime.
+
+The ID is passed to WinGet with exact matching, silent mode, agreement flags,
+and explicit scope. `machine` is the default so software is available beyond
+the temporary Packer account. Leave `version` empty for the source's current
+version, or pin a version available in your approved repository. Production
+environments should use a controlled WinGet source or internal package repository.
+
+Microsoft 365 installation does not grant a license. The organization must
+provide an eligible subscription, activation method, update channel, and Office
+configuration appropriate to the VDI licensing model. Replace the generic
+WinGet package with an approved Office Deployment Tool configuration when
+shared-computer activation or channel control is required.
+
+Docker Desktop is present but disabled by default because VDI use requires a
+separate licensing review, WSL 2 or Hyper-V support, and nested virtualization.
+Enable it only for a compatible developer catalog. Notepad++ is also provided as
+an optional disabled entry because Visual Studio Code is the default editor.
 
 ## Citrix Optimizer
 

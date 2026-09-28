@@ -9,10 +9,16 @@ Describe 'Install-VdiApplication' {
     It 'plans only enabled applications in simulation mode' {
         $results = @(Install-VdiApplication -ManifestPath $AppsPath -Simulation)
 
-        $results.Count | Should -Be 2
+        $results.Count | Should -Be 20
         $results.Status | Should -Not -Contain 'Installed'
         $results.Id | Should -Contain '7zip.7zip'
+        $results.Id | Should -Contain 'Google.Chrome'
+        $results.Id | Should -Contain 'Microsoft.VisualStudioCode'
+        $results.Id | Should -Contain 'Python.Python.3.13'
+        $results.Id | Should -Contain 'Microsoft.Office'
         $results.Id | Should -Not -Contain 'Notepad++.Notepad++'
+        $results.Id | Should -Not -Contain 'Docker.DockerDesktop'
+        $results.Scope | Should -Not -Contain 'user'
     }
 
     It 'rejects duplicate application IDs' {
@@ -46,6 +52,17 @@ Describe 'Install-VdiApplication' {
 
         $result.Status | Should -Be 'Planned'
         $result.Version | Should -Be ''
+        $result.Scope | Should -Be 'machine'
+    }
+
+    It 'rejects an unsupported installation scope' {
+        $manifestPath = Join-Path $TestDrive 'invalid-scope.json'
+        @{ applications = @(@{ name = 'Invalid'; id = 'Vendor.Invalid'; scope = 'session' }) } |
+            ConvertTo-Json -Depth 4 |
+            Set-Content -LiteralPath $manifestPath
+
+        { Install-VdiApplication -ManifestPath $manifestPath -Simulation } |
+            Should -Throw "Application 'scope' must be 'machine' or 'user': Vendor.Invalid"
     }
 }
 
@@ -118,7 +135,7 @@ Describe 'Invoke-VdiImagePipeline' {
             -Simulation
 
         $result.Mode | Should -Be 'Simulation'
-        $result.Applications.Count | Should -Be 2
+        $result.Applications.Count | Should -Be 20
         $result.Optimizer.Status | Should -Be 'Planned'
         $result.Seal.Status | Should -Be 'Planned'
         $result.Publication.Status | Should -Be 'Planned'

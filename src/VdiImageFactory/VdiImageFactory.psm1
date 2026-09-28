@@ -36,14 +36,19 @@ function Get-ApplicationManifest {
 
         $hasVersion = $application.PSObject.Properties.Name -contains 'version'
         $hasEnabled = $application.PSObject.Properties.Name -contains 'enabled'
+        $hasScope = $application.PSObject.Properties.Name -contains 'scope'
         if ($hasEnabled -and $application.enabled -isnot [bool]) {
             throw "Application 'enabled' values must be boolean: $($application.id)"
+        }
+        if ($hasScope -and $application.scope -notin @('machine', 'user')) {
+            throw "Application 'scope' must be 'machine' or 'user': $($application.id)"
         }
 
         $normalizedApplications.Add([pscustomobject]@{
                 Name = [string]$application.name
                 Id = [string]$application.id
                 Version = if ($hasVersion) { [string]$application.version } else { '' }
+                Scope = if ($hasScope) { [string]$application.scope } else { 'machine' }
                 Enabled = if ($hasEnabled) { [bool]$application.enabled } else { $true }
             })
     }
@@ -87,6 +92,7 @@ function Install-VdiApplication {
             Name = $application.Name
             Id = $application.Id
             Version = $application.Version
+            Scope = $application.Scope
             Status = 'Planned'
         }
 
@@ -94,7 +100,7 @@ function Install-VdiApplication {
             $arguments = @(
                 'install', '--id', $application.Id, '--exact', '--silent',
                 '--accept-package-agreements', '--accept-source-agreements',
-                '--disable-interactivity'
+                '--disable-interactivity', '--scope', $application.Scope
             )
             if (-not [string]::IsNullOrWhiteSpace($application.Version)) {
                 $arguments += @('--version', $application.Version)

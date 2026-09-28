@@ -1,22 +1,26 @@
 {
   "applications": [
-    {
-      "name": "7-Zip",
-      "id": "7zip.7zip",
-      "version": "",
-      "enabled": true
-    },
-    {
-      "name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
-      "id": "Microsoft.VCRedist.2015+.x64",
-      "version": "",
-      "enabled": true
-    },
-    {
-      "name": "Notepad++",
-      "id": "Notepad++.Notepad++",
-      "version": "",
-      "enabled": false
-    }
+    { "name": "7-Zip", "id": "7zip.7zip", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Google Chrome", "id": "Google.Chrome", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Visual Studio Code", "id": "Microsoft.VisualStudioCode", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Git", "id": "Git.Git", "version": "", "scope": "machine", "enabled": true },
+    { "name": "GitHub CLI", "id": "GitHub.cli", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Python 3.13", "id": "Python.Python.3.13", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Node.js LTS", "id": "OpenJS.NodeJS.LTS", "version": "", "scope": "machine", "enabled": true },
+    { "name": "PowerShell 7", "id": "Microsoft.PowerShell", "version": "", "scope": "machine", "enabled": true },
+    { "name": ".NET SDK 10", "id": "Microsoft.DotNet.SDK.10", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Go", "id": "GoLang.Go", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Microsoft OpenJDK 21", "id": "Microsoft.OpenJDK.21", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Rustup", "id": "Rustlang.Rustup", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Azure CLI", "id": "Microsoft.AzureCLI", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Azure Storage Explorer", "id": "Microsoft.Azure.StorageExplorer", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Terraform", "id": "Hashicorp.Terraform", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Kubernetes CLI", "id": "Kubernetes.kubectl", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Windows Terminal", "id": "Microsoft.WindowsTerminal", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Postman", "id": "Postman.Postman", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Microsoft 365 Apps for enterprise", "id": "Microsoft.Office", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)", "id": "Microsoft.VCRedist.2015+.x64", "version": "", "scope": "machine", "enabled": true },
+    { "name": "Notepad++", "id": "Notepad++.Notepad++", "version": "", "scope": "machine", "enabled": false },
+    { "name": "Docker Desktop", "id": "Docker.DockerDesktop", "version": "", "scope": "machine", "enabled": false }
   ]
 }
