@@ -52,6 +52,39 @@ variable "image_version" {
   default = "dev"
 }
 
+variable "ui_language" {
+  type        = string
+  default     = "en-US"
+  description = "Windows display language; it must exist in the installation media."
+
+  validation {
+    condition     = can(regex("^[a-z]{2,3}-[A-Z]{2}$", var.ui_language))
+    error_message = "Use a language tag such as en-US or pt-BR."
+  }
+}
+
+variable "locale" {
+  type        = string
+  default     = "en-US"
+  description = "Input, system, and user locale applied during unattended setup."
+
+  validation {
+    condition     = can(regex("^[a-z]{2,3}-[A-Z]{2}$", var.locale))
+    error_message = "Use a locale tag such as en-US or pt-BR."
+  }
+}
+
+variable "time_zone" {
+  type        = string
+  default     = "UTC"
+  description = "Windows time zone ID, for example E. South America Standard Time."
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9 .()+-]+$", var.time_zone))
+    error_message = "Use a Windows time zone ID such as UTC or Pacific Standard Time."
+  }
+}
+
 variable "application_profiles" {
   type        = list(string)
   default     = ["standard"]
@@ -135,6 +168,9 @@ source "hyperv-iso" "windows_11" {
       {
         winrm_password      = var.winrm_password
         windows_image_index = var.windows_image_index
+        ui_language         = var.ui_language
+        locale              = var.locale
+        time_zone           = var.time_zone
       }
     )
   }

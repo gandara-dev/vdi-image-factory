@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "image": {
+    "name": "vdi-win11-engineering",
+    "version": "2026.09.1",
+    "windowsImageIndex": 6,
+    "isoUrl": "",
+    "isoChecksum": "",
+    "hardware": {
+      "cpus": 4,
+      "memoryMb": 8192,
+      "diskSizeMb": 81920,
+      "switchName": "Default Switch"
+    },
+    "regional": {
+      "uiLanguage": "en-US",
+      "locale": "en-US",
+      "timeZone": "UTC"
+    },
+    "applications": {
+      "profiles": ["developer"],
+      "include": [],
+      "exclude": ["Postman.Postman"]
+    },
+    "optimizer": {
+      "enabled": false,
+      "template": "AutoSelect"
+    }
+  },
+  "mcs": {
+    "catalogName": "Engineering Desktops",
+    "provisioningSchemeName": "Engineering-W11",
+    "hostingUnitName": "Primary",
+    "namingScheme": "VDI-ENG-###",
+    "domain": "corp.example.test",
+    "organizationalUnit": "OU=Engineering,OU=VDI,DC=corp,DC=example,DC=test",
+    "machineCount": 25,
+    "allocationType": "Random",
+    "machine": {
+      "cpus": 2,
+      "memoryMb": 8192
+    }
+  }
+}

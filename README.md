@@ -11,6 +11,29 @@ and a separate command publishes the resulting snapshot through Citrix MCS.
 
 ![Infrastructure-free pipeline demo](docs/demo.gif)
 
+## Try it: Image Builder
+
+**[Open the Image Builder](https://gandara-dev.github.io/vdi-image-factory/)**:
+design a golden image and its MCS machine catalog in the browser, with no
+installation.
+
+![Image Builder](docs/image-builder.jpg)
+
+- Pick the build VM resources, Windows edition, display language, locale, and
+  time zone.
+- Start from the `standard`, `developer`, or `application` profile and add or
+  remove individual packages from the catalog.
+- Optionally plan the MCS catalog: naming scheme, machine count, domain, OU,
+  pooled or assigned desktops, and per-machine size.
+- Download `build.json`, the Packer variables, and a reviewed Citrix SDK plan.
+
+The page runs the same validation as the PowerShell module, and both are tested
+against the same fixtures, so a configuration accepted in the browser is
+accepted by `New-VdiBuild.ps1`. It is a demo with synthetic example values: it
+only generates files and never builds or sends anything. Run it from a clone with
+`./scripts/Start-ImageBuilder.ps1 -Open`. See the
+[Image Builder guide](docs/image-builder.md).
+
 ## Architecture
 
 ![VDI Image Factory architecture](docs/diagrams/architecture-overview.svg)
@@ -34,16 +57,26 @@ The result shows the resolved application plan, Optimizer invocation, seal
 metadata, and the asynchronous MCS publication that would be requested. Every
 hostname, path, UUID, and catalog name used by this mode is synthetic.
 
+To try a complete build configuration, validate the example (or a `build.json`
+downloaded from the Image Builder), simulate it, and write the build files:
+
+```powershell
+./scripts/New-VdiBuild.ps1 -ConfigPath ./config/build.example.json -OutputDirectory ./build -Simulation
+```
+
 ## Repository layout
 
 | Path | Purpose |
 |---|---|
 | `packer/` | Windows 11 generation-2 Hyper-V template and unattended setup |
 | `src/VdiImageFactory/` | Testable PowerShell module containing every stage |
+| `site/` | Image Builder page; `site/lib/` holds the shared build logic |
 | `config/application-catalog.json` | Application library and composable image profiles |
+| `config/build.example.json` | Example build configuration for the page and `New-VdiBuild.ps1` |
+| `config/windows-*.json` | Locales and Windows time zone IDs accepted by the build |
 | `ansible/` | Optional remote Windows customization playbook |
 | `scripts/` | Operator entry points for simulation and MCS publication |
-| `tests/` | Infrastructure-free Pester tests |
+| `tests/` | Infrastructure-free Pester and Node tests with shared fixtures |
 
 ## Build a Hyper-V image
 
@@ -54,19 +87,29 @@ Requirements:
 - a properly licensed Windows 11 ISO and its SHA-256 checksum;
 - enough local disk and memory for the VM.
 
-Create a private variable file from the example. Do not commit the temporary
-WinRM password or ISO location.
+Generate the variables from a build configuration, supply the temporary WinRM
+password through the environment, and build. The generated file contains no
+secrets; `*.auto.pkrvars.hcl` and `build/` are ignored by Git.
 
 ```powershell
-Copy-Item packer/variables.pkrvars.example.hcl packer/private.auto.pkrvars.hcl
-# Edit packer/private.auto.pkrvars.hcl
-packer init ./packer
-packer validate ./packer
-packer build ./packer
+./scripts/New-VdiBuild.ps1 -ConfigPath ./build.json -OutputDirectory ./build
+./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
+$env:PKR_VAR_winrm_password = '<temporary password, 16+ characters>'
+packer build -var-file ./build/build.auto.pkrvars.hcl `
+    -var 'iso_url=file:///C:/ISO/Windows11.iso' `
+    -var 'iso_checksum=sha256:<ISO checksum>' `
+    ./packer
 ```
 
+Alternatively, copy `packer/variables.pkrvars.example.hcl` to an ignored
+`packer/private.auto.pkrvars.hcl` and edit it by hand. `Test-PackerTemplate.ps1`
+runs `packer init`, `packer fmt -check`, and `packer validate` with obvious
+placeholders for the ISO and password, so it also works on a fresh clone.
+
 Confirm `windows_image_index` against your ISO with DISM before building; the
-default index is only an example. The WinRM password validator accepts a
+default index is only an example. `ui_language` must be a language included in
+the ISO; `locale` sets the input, system, and user locale, and `time_zone` takes
+a Windows time zone ID such as `E. South America Standard Time`. The WinRM password validator accepts a
 restricted XML-safe character set because it is rendered into unattended XML.
 
 The template pins the official Hyper-V plugin to `1.1.5`, creates a generation-2
@@ -226,10 +269,14 @@ standard.
 ```powershell
 Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser
 Invoke-Pester ./tests/VdiImageFactory.Tests.ps1 -Output Detailed
+node --test tests/web/*.test.mjs
 ```
 
-CI runs Pester on Windows and Linux, PSScriptAnalyzer, `packer fmt`,
-`packer validate`, Ansible syntax checking, and `ansible-lint`. It never builds
+The PowerShell and Node suites read the same fixtures in `tests/fixtures`:
+validation cases, catalog resolution cases, and golden Packer and MCS output. CI
+runs Pester on Windows and Linux (and Windows PowerShell 5.1), the Node suite,
+PSScriptAnalyzer, `packer fmt`, `packer validate` of the template and of a
+generated variable file, Ansible syntax checking, and `ansible-lint`. It never builds
 a Windows VM or contacts a Citrix site, so pull requests need no infrastructure
 credentials.
 
@@ -244,6 +291,7 @@ credentials.
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Image Builder](docs/image-builder.md)
 - [Application catalog](docs/application-catalog.md)
 - [Operations guide](docs/operations-guide.md)
 - [Testing guide](docs/testing.md)

@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "description": "Locales offered for input, system, and user locale. The UI language must also exist in the Windows installation media.",
+  "locales": [
+    {
+      "id": "ar-SA",
+      "name": "Arabic (Saudi Arabia)"
+    },
+    {
+      "id": "cs-CZ",
+      "name": "Czech (Czechia)"
+    },
+    {
+      "id": "da-DK",
+      "name": "Danish (Denmark)"
+    },
+    {
+      "id": "de-DE",
+      "name": "German (Germany)"
+    },
+    {
+      "id": "el-GR",
+      "name": "Greek (Greece)"
+    },
+    {
+      "id": "en-AU",
+      "name": "English (Australia)"
+    },
+    {
+      "id": "en-CA",
+      "name": "English (Canada)"
+    },
+    {
+      "id": "en-GB",
+      "name": "English (United Kingdom)"
+    },
+    {
+      "id": "en-IE",
+      "name": "English (Ireland)"
+    },
+    {
+      "id": "en-US",
+      "name": "English (United States)"
+    },
+    {
+      "id": "es-ES",
+      "name": "Spanish (Spain)"
+    },
+    {
+      "id": "es-MX",
+      "name": "Spanish (Mexico)"
+    },
+    {
+      "id": "fi-FI",
+      "name": "Finnish (Finland)"
+    },
+    {
+      "id": "fr-CA",
+      "name": "French (Canada)"
+    },
+    {
+      "id": "fr-FR",
+      "name": "French (France)"
+    },
+    {
+      "id": "he-IL",
+      "name": "Hebrew (Israel)"
+    },
+    {
+      "id": "hu-HU",
+      "name": "Hungarian (Hungary)"
+    },
+    {
+      "id": "it-IT",
+      "name": "Italian (Italy)"
+    },
+    {
+      "id": "ja-JP",
+      "name": "Japanese (Japan)"
+    },
+    {
+      "id": "ko-KR",
+      "name": "Korean (Korea)"
+    },
+    {
+      "id": "nb-NO",
+      "name": "Norwegian Bokmål (Norway)"
+    },
+    {
+      "id": "nl-NL",
+      "name": "Dutch (Netherlands)"
+    },
+    {
+      "id": "pl-PL",
+      "name": "Polish (Poland)"
+    },
+    {
+      "id": "pt-BR",
+      "name": "Portuguese (Brazil)"
+    },
+    {
+      "id": "pt-PT",
+      "name": "Portuguese (Portugal)"
+    },
+    {
+      "id": "ro-RO",
+      "name": "Romanian (Romania)"
+    },
+    {
+      "id": "ru-RU",
+      "name": "Russian (Russia)"
+    },
+    {
+      "id": "sv-SE",
+      "name": "Swedish (Sweden)"
+    },
+    {
+      "id": "th-TH",
+      "name": "Thai (Thailand)"
+    },
+    {
+      "id": "tr-TR",
+      "name": "Turkish (Türkiye)"
+    },
+    {
+      "id": "uk-UA",
+      "name": "Ukrainian (Ukraine)"
+    },
+    {
+      "id": "zh-CN",
+      "name": "Chinese (China)"
+    },
+    {
+      "id": "zh-TW",
+      "name": "Chinese (Taiwan)"
+    }
+  ]
+}

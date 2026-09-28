@@ -6,6 +6,10 @@ Every change must pass:
 
 - Pester on PowerShell 7 for Windows and Linux;
 - the same Pester suite on Windows PowerShell 5.1;
+- the Node suite for the Image Builder page, which runs the same validation,
+  catalog, and golden-output fixtures as Pester;
+- `New-VdiBuild.ps1` against `config/build.example.json`, and `packer validate`
+  of the generated variable file;
 - simulation of the complete application, Optimizer, seal, and MCS pipeline;
 - catalog tests for profiles, inheritance, overrides, select-all, missing IDs,
   invalid scopes, duplicate definitions, and inheritance cycles;
@@ -24,10 +28,17 @@ Invoke-Pester ./tests/VdiImageFactory.Tests.ps1 -CI -Output Detailed
   -ApplicationProfile developer `
   -SkipPublish `
   -Simulation
-packer init ./packer
-packer fmt -check -recursive ./packer
-packer validate ./packer
+node --test tests/web/*.test.mjs
+./scripts/New-VdiBuild.ps1 `
+  -ConfigPath ./config/build.example.json `
+  -OutputDirectory ./build `
+  -Simulation
+./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
 ```
+
+`Test-PackerTemplate.ps1` runs `packer init`, `packer fmt -check`, and
+`packer validate` with placeholder ISO and password values, so it works on a
+fresh clone without licensed media.
 
 ## Environment acceptance gate
 
