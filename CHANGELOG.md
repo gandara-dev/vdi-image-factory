@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-09-28
+
+### Added
+
+- Image Builder page (`site/`) to design a golden image and an optional MCS
+  machine catalog in the browser, published with GitHub Pages and runnable
+  locally with `scripts/Start-ImageBuilder.ps1`.
+- `New-VdiBuild.ps1`, which validates a `build.json`, simulates the guest
+  pipeline, and writes Packer variables and a reviewed MCS catalog plan.
+- `Test-VdiBuildConfiguration`, `ConvertTo-VdiPackerVariable`,
+  `ConvertTo-VdiMcsPlanScript`, `Get-VdiBuildReference`, and
+  `Get-VdiMachineName`.
+- `ui_language`, `locale`, and `time_zone` Packer variables applied by the
+  unattended answer file, with Windows locale and time zone reference files.
+- Shared fixtures that run against both the PowerShell module and the page, plus
+  a Node test suite.
+
+### Fixed
+
+- The documented `packer validate` step failed on a fresh clone because the ISO
+  and password variables had no values. `scripts/Test-PackerTemplate.ps1` now
+  validates the template with explicit placeholders.
+
 ## [0.3.1] - 2026-09-28
 
 ### Added

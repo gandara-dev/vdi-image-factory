@@ -29,18 +29,21 @@ host.
   the repository.
 - Validate available Hyper-V memory and disk capacity.
 
-Copy the example variables to an ignored private file, run `packer init`, then
-run `packer validate` before starting a build.
+Generate the variables from a reviewed `build.json` (designed in the Image
+Builder or written by hand), then validate them against the template before
+starting a build. The script supplies placeholders for the ISO and password,
+so validation never needs real media.
 
 ```powershell
-Copy-Item packer/variables.pkrvars.example.hcl packer/private.auto.pkrvars.hcl
-packer init ./packer
-packer fmt -check -recursive ./packer
-packer validate ./packer
+./scripts/New-VdiBuild.ps1 -ConfigPath ./build.json -OutputDirectory ./build -Simulation
+./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
 ```
 
-If validation reports a missing variable, confirm that the private filename
-ends exactly in `.auto.pkrvars.hcl`. If package installation reports that
+To build, pass the generated file, the ISO location and checksum, and the
+temporary password through `PKR_VAR_winrm_password`. If you prefer a
+hand-edited file, copy `packer/variables.pkrvars.example.hcl` to an ignored
+`packer/private.auto.pkrvars.hcl`. If validation reports a missing variable,
+confirm that the private filename ends exactly in `.auto.pkrvars.hcl`. If package installation reports that
 WinGet is unavailable, verify App Installer registration inside the fresh guest;
 installing WinGet only on the Hyper-V host does not satisfy the guest workflow.
 

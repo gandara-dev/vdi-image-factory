@@ -1,0 +1,570 @@
+{
+  "schemaVersion": 1,
+  "description": "Windows time zone IDs accepted by the unattended setup TimeZone setting. Offsets are standard (non-DST) offsets.",
+  "timeZones": [
+    {
+      "id": "Dateline Standard Time",
+      "utcOffset": "-12:00"
+    },
+    {
+      "id": "UTC-11",
+      "utcOffset": "-11:00"
+    },
+    {
+      "id": "Aleutian Standard Time",
+      "utcOffset": "-10:00"
+    },
+    {
+      "id": "Hawaiian Standard Time",
+      "utcOffset": "-10:00"
+    },
+    {
+      "id": "Marquesas Standard Time",
+      "utcOffset": "-09:30"
+    },
+    {
+      "id": "Alaskan Standard Time",
+      "utcOffset": "-09:00"
+    },
+    {
+      "id": "UTC-09",
+      "utcOffset": "-09:00"
+    },
+    {
+      "id": "Pacific Standard Time",
+      "utcOffset": "-08:00"
+    },
+    {
+      "id": "Pacific Standard Time (Mexico)",
+      "utcOffset": "-08:00"
+    },
+    {
+      "id": "UTC-08",
+      "utcOffset": "-08:00"
+    },
+    {
+      "id": "Mountain Standard Time",
+      "utcOffset": "-07:00"
+    },
+    {
+      "id": "Mountain Standard Time (Mexico)",
+      "utcOffset": "-07:00"
+    },
+    {
+      "id": "US Mountain Standard Time",
+      "utcOffset": "-07:00"
+    },
+    {
+      "id": "Yukon Standard Time",
+      "utcOffset": "-07:00"
+    },
+    {
+      "id": "Canada Central Standard Time",
+      "utcOffset": "-06:00"
+    },
+    {
+      "id": "Central America Standard Time",
+      "utcOffset": "-06:00"
+    },
+    {
+      "id": "Central Standard Time",
+      "utcOffset": "-06:00"
+    },
+    {
+      "id": "Central Standard Time (Mexico)",
+      "utcOffset": "-06:00"
+    },
+    {
+      "id": "Easter Island Standard Time",
+      "utcOffset": "-06:00"
+    },
+    {
+      "id": "Cuba Standard Time",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "Eastern Standard Time",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "Eastern Standard Time (Mexico)",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "Haiti Standard Time",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "SA Pacific Standard Time",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "Turks And Caicos Standard Time",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "US Eastern Standard Time",
+      "utcOffset": "-05:00"
+    },
+    {
+      "id": "Atlantic Standard Time",
+      "utcOffset": "-04:00"
+    },
+    {
+      "id": "Central Brazilian Standard Time",
+      "utcOffset": "-04:00"
+    },
+    {
+      "id": "Pacific SA Standard Time",
+      "utcOffset": "-04:00"
+    },
+    {
+      "id": "SA Western Standard Time",
+      "utcOffset": "-04:00"
+    },
+    {
+      "id": "Venezuela Standard Time",
+      "utcOffset": "-04:00"
+    },
+    {
+      "id": "Newfoundland Standard Time",
+      "utcOffset": "-03:30"
+    },
+    {
+      "id": "Argentina Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Bahia Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "E. South America Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Magallanes Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Montevideo Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Paraguay Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "SA Eastern Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Saint Pierre Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Tocantins Standard Time",
+      "utcOffset": "-03:00"
+    },
+    {
+      "id": "Greenland Standard Time",
+      "utcOffset": "-02:00"
+    },
+    {
+      "id": "Mid-Atlantic Standard Time",
+      "utcOffset": "-02:00"
+    },
+    {
+      "id": "UTC-02",
+      "utcOffset": "-02:00"
+    },
+    {
+      "id": "Azores Standard Time",
+      "utcOffset": "-01:00"
+    },
+    {
+      "id": "Cape Verde Standard Time",
+      "utcOffset": "-01:00"
+    },
+    {
+      "id": "GMT Standard Time",
+      "utcOffset": "+00:00"
+    },
+    {
+      "id": "Greenwich Standard Time",
+      "utcOffset": "+00:00"
+    },
+    {
+      "id": "Morocco Standard Time",
+      "utcOffset": "+00:00"
+    },
+    {
+      "id": "Sao Tome Standard Time",
+      "utcOffset": "+00:00"
+    },
+    {
+      "id": "UTC",
+      "utcOffset": "+00:00"
+    },
+    {
+      "id": "Central Europe Standard Time",
+      "utcOffset": "+01:00"
+    },
+    {
+      "id": "Central European Standard Time",
+      "utcOffset": "+01:00"
+    },
+    {
+      "id": "Romance Standard Time",
+      "utcOffset": "+01:00"
+    },
+    {
+      "id": "W. Central Africa Standard Time",
+      "utcOffset": "+01:00"
+    },
+    {
+      "id": "W. Europe Standard Time",
+      "utcOffset": "+01:00"
+    },
+    {
+      "id": "E. Europe Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Egypt Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "FLE Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "GTB Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Israel Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Kaliningrad Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Libya Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Middle East Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Namibia Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "South Africa Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "South Sudan Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Sudan Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "West Bank Standard Time",
+      "utcOffset": "+02:00"
+    },
+    {
+      "id": "Arab Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Arabic Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Belarus Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "E. Africa Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Jordan Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Russian Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Syria Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Turkey Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Volgograd Standard Time",
+      "utcOffset": "+03:00"
+    },
+    {
+      "id": "Iran Standard Time",
+      "utcOffset": "+03:30"
+    },
+    {
+      "id": "Arabian Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Astrakhan Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Azerbaijan Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Caucasus Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Georgian Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Mauritius Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Russia Time Zone 3",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Saratov Standard Time",
+      "utcOffset": "+04:00"
+    },
+    {
+      "id": "Afghanistan Standard Time",
+      "utcOffset": "+04:30"
+    },
+    {
+      "id": "Ekaterinburg Standard Time",
+      "utcOffset": "+05:00"
+    },
+    {
+      "id": "Pakistan Standard Time",
+      "utcOffset": "+05:00"
+    },
+    {
+      "id": "Qyzylorda Standard Time",
+      "utcOffset": "+05:00"
+    },
+    {
+      "id": "West Asia Standard Time",
+      "utcOffset": "+05:00"
+    },
+    {
+      "id": "India Standard Time",
+      "utcOffset": "+05:30"
+    },
+    {
+      "id": "Sri Lanka Standard Time",
+      "utcOffset": "+05:30"
+    },
+    {
+      "id": "Nepal Standard Time",
+      "utcOffset": "+05:45"
+    },
+    {
+      "id": "Bangladesh Standard Time",
+      "utcOffset": "+06:00"
+    },
+    {
+      "id": "Central Asia Standard Time",
+      "utcOffset": "+06:00"
+    },
+    {
+      "id": "Omsk Standard Time",
+      "utcOffset": "+06:00"
+    },
+    {
+      "id": "Myanmar Standard Time",
+      "utcOffset": "+06:30"
+    },
+    {
+      "id": "Altai Standard Time",
+      "utcOffset": "+07:00"
+    },
+    {
+      "id": "N. Central Asia Standard Time",
+      "utcOffset": "+07:00"
+    },
+    {
+      "id": "North Asia Standard Time",
+      "utcOffset": "+07:00"
+    },
+    {
+      "id": "SE Asia Standard Time",
+      "utcOffset": "+07:00"
+    },
+    {
+      "id": "Tomsk Standard Time",
+      "utcOffset": "+07:00"
+    },
+    {
+      "id": "W. Mongolia Standard Time",
+      "utcOffset": "+07:00"
+    },
+    {
+      "id": "China Standard Time",
+      "utcOffset": "+08:00"
+    },
+    {
+      "id": "North Asia East Standard Time",
+      "utcOffset": "+08:00"
+    },
+    {
+      "id": "Singapore Standard Time",
+      "utcOffset": "+08:00"
+    },
+    {
+      "id": "Taipei Standard Time",
+      "utcOffset": "+08:00"
+    },
+    {
+      "id": "Ulaanbaatar Standard Time",
+      "utcOffset": "+08:00"
+    },
+    {
+      "id": "W. Australia Standard Time",
+      "utcOffset": "+08:00"
+    },
+    {
+      "id": "Aus Central W. Standard Time",
+      "utcOffset": "+08:45"
+    },
+    {
+      "id": "Korea Standard Time",
+      "utcOffset": "+09:00"
+    },
+    {
+      "id": "North Korea Standard Time",
+      "utcOffset": "+09:00"
+    },
+    {
+      "id": "Tokyo Standard Time",
+      "utcOffset": "+09:00"
+    },
+    {
+      "id": "Transbaikal Standard Time",
+      "utcOffset": "+09:00"
+    },
+    {
+      "id": "Yakutsk Standard Time",
+      "utcOffset": "+09:00"
+    },
+    {
+      "id": "AUS Central Standard Time",
+      "utcOffset": "+09:30"
+    },
+    {
+      "id": "Cen. Australia Standard Time",
+      "utcOffset": "+09:30"
+    },
+    {
+      "id": "AUS Eastern Standard Time",
+      "utcOffset": "+10:00"
+    },
+    {
+      "id": "E. Australia Standard Time",
+      "utcOffset": "+10:00"
+    },
+    {
+      "id": "Tasmania Standard Time",
+      "utcOffset": "+10:00"
+    },
+    {
+      "id": "Vladivostok Standard Time",
+      "utcOffset": "+10:00"
+    },
+    {
+      "id": "West Pacific Standard Time",
+      "utcOffset": "+10:00"
+    },
+    {
+      "id": "Lord Howe Standard Time",
+      "utcOffset": "+10:30"
+    },
+    {
+      "id": "Bougainville Standard Time",
+      "utcOffset": "+11:00"
+    },
+    {
+      "id": "Central Pacific Standard Time",
+      "utcOffset": "+11:00"
+    },
+    {
+      "id": "Magadan Standard Time",
+      "utcOffset": "+11:00"
+    },
+    {
+      "id": "Norfolk Standard Time",
+      "utcOffset": "+11:00"
+    },
+    {
+      "id": "Russia Time Zone 10",
+      "utcOffset": "+11:00"
+    },
+    {
+      "id": "Sakhalin Standard Time",
+      "utcOffset": "+11:00"
+    },
+    {
+      "id": "Fiji Standard Time",
+      "utcOffset": "+12:00"
+    },
+    {
+      "id": "Kamchatka Standard Time",
+      "utcOffset": "+12:00"
+    },
+    {
+      "id": "New Zealand Standard Time",
+      "utcOffset": "+12:00"
+    },
+    {
+      "id": "Russia Time Zone 11",
+      "utcOffset": "+12:00"
+    },
+    {
+      "id": "UTC+12",
+      "utcOffset": "+12:00"
+    },
+    {
+      "id": "Chatham Islands Standard Time",
+      "utcOffset": "+12:45"
+    },
+    {
+      "id": "Samoa Standard Time",
+      "utcOffset": "+13:00"
+    },
+    {
+      "id": "Tonga Standard Time",
+      "utcOffset": "+13:00"
+    },
+    {
+      "id": "UTC+13",
+      "utcOffset": "+13:00"
+    },
+    {
+      "id": "Line Islands Standard Time",
+      "utcOffset": "+14:00"
+    }
+  ]
+}

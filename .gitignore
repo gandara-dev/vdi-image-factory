@@ -8,3 +8,4 @@ output-*/
 demo/*.cast
 TestResults/
 testResults.xml
+/build/

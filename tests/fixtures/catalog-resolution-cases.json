@@ -1,0 +1,14 @@
+{
+  "description": "Shared catalog resolution cases against config/application-catalog.json. Both implementations must return the same IDs in catalog order, or fail with the same message.",
+  "cases": [
+    { "name": "standard", "profiles": ["standard"], "include": [], "exclude": [], "ids": ["7zip.7zip", "Google.Chrome", "Mozilla.Firefox", "Microsoft.Office", "Microsoft.VCRedist.2015+.x64"] },
+    { "name": "profile names are case-insensitive", "profiles": ["STANDARD"], "include": [], "exclude": ["mozilla.firefox"], "ids": ["7zip.7zip", "Google.Chrome", "Microsoft.Office", "Microsoft.VCRedist.2015+.x64"] },
+    { "name": "application plus includes", "profiles": ["application"], "include": ["Git.Git", "Microsoft.PowerShell"], "exclude": [], "ids": ["Git.Git", "Microsoft.PowerShell"] },
+    { "name": "developer inherits standard", "profiles": ["developer"], "include": [], "exclude": ["Postman.Postman", "Microsoft.Office"], "count": 19 },
+    { "name": "select all", "profiles": ["application"], "include": ["*"], "exclude": [], "count": 23 },
+    { "name": "exclude all then include one", "profiles": ["standard"], "include": ["Git.Git"], "exclude": ["*"], "ids": [] },
+    { "name": "unknown profile", "profiles": ["gaming"], "include": [], "exclude": [], "error": "Application profile was not found: gaming" },
+    { "name": "unknown include", "profiles": ["standard"], "include": ["Example.Missing"], "exclude": [], "error": "Included application was not found in the catalog: Example.Missing" },
+    { "name": "unknown exclude", "profiles": ["standard"], "include": [], "exclude": ["Example.Missing"], "error": "Excluded application was not found in the catalog: Example.Missing" }
+  ]
+}

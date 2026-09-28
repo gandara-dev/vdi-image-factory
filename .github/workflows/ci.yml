@@ -32,6 +32,20 @@ jobs:
       - name: Run the infrastructure-free demo
         shell: pwsh
         run: ./scripts/Invoke-VdiImagePipeline.ps1 -Simulation | Out-Null
+      - name: Validate and simulate the example build configuration
+        shell: pwsh
+        run: ./scripts/New-VdiBuild.ps1 -ConfigPath ./config/build.example.json -OutputDirectory ./build -Simulation | Out-Null
+
+  web-tests:
+    name: Image Builder tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run shared fixtures against the page logic
+        run: node --test tests/web/*.test.mjs
 
   powershell-analysis:
     name: PowerShell analysis
@@ -70,17 +84,14 @@ jobs:
       - uses: hashicorp/setup-packer@v3.4.0
         with:
           version: 1.16.1
-      - name: Initialize plugins
-        run: packer init ./packer
-      - name: Check formatting
-        run: packer fmt -check -recursive ./packer
-      - name: Validate Hyper-V template
-        run: >-
-          packer validate
-          -var 'iso_url=https://example.test/windows.iso'
-          -var 'iso_checksum=sha256:0000000000000000000000000000000000000000000000000000000000000000'
-          -var 'winrm_password=Ci-Ephemeral-Password123'
-          ./packer
+      - name: Validate the Hyper-V template
+        shell: pwsh
+        run: ./scripts/Test-PackerTemplate.ps1
+      - name: Validate a generated variable file
+        shell: pwsh
+        run: |
+          ./scripts/New-VdiBuild.ps1 -ConfigPath ./config/build.example.json -OutputDirectory ./build | Out-Null
+          ./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
 
   ansible-lint:
     name: Ansible validation

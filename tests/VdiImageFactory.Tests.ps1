@@ -7,7 +7,7 @@ BeforeAll {
 
 Describe 'Module contract' {
     It 'publishes the documented module version' {
-        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.3.1'
+        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.4.0'
     }
 }
 
@@ -237,5 +237,107 @@ Describe 'Invoke-VdiImagePipeline' {
 
         $result.Optimizer | Should -BeNullOrEmpty
         $result.Publication | Should -BeNullOrEmpty
+    }
+}
+
+BeforeDiscovery {
+    $fixtureRoot = Join-Path (Split-Path -Parent $PSCommandPath) 'fixtures'
+    $script:ValidationCases = @(
+        (Get-Content -LiteralPath (Join-Path $fixtureRoot 'build-configuration-cases.json') -Raw |
+            ConvertFrom-Json).cases | ForEach-Object {
+            @{ Name = $_.name; Patch = $_.patch; ExpectedErrors = @($_.errors) }
+        }
+    )
+    $script:ResolutionCases = @(
+        (Get-Content -LiteralPath (Join-Path $fixtureRoot 'catalog-resolution-cases.json') -Raw |
+            ConvertFrom-Json).cases | ForEach-Object {
+            @{ Name = $_.name; Case = $_ }
+        }
+    )
+}
+
+Describe 'Build configuration (shared fixtures with the Image Builder page)' {
+    BeforeAll {
+        $script:FixtureRoot = Join-Path $PSScriptRoot 'fixtures'
+        $script:ExamplePath = Join-Path $RepositoryRoot 'config/build.example.json'
+        $script:Reference = Get-VdiBuildReference
+
+        function Get-PatchedConfiguration {
+            param($Patch)
+            $config = Get-Content -LiteralPath $ExamplePath -Raw | ConvertFrom-Json
+            foreach ($property in $Patch.PSObject.Properties) {
+                $keys = $property.Name -split '\.'
+                $target = $config
+                for ($i = 0; $i -lt $keys.Count - 1; $i++) {
+                    $target = $target.($keys[$i])
+                }
+                $target.($keys[-1]) = $property.Value
+            }
+            return $config
+        }
+
+        function Get-FixtureText {
+            param([string]$Name)
+            return (Get-Content -LiteralPath (Join-Path $FixtureRoot $Name) -Raw) -replace "`r`n", "`n"
+        }
+    }
+
+    It 'validation: <Name>' -ForEach $ValidationCases {
+        $configuration = Get-PatchedConfiguration $Patch
+        $paths = @(Test-VdiBuildConfiguration -Configuration $configuration -Reference $Reference |
+                ForEach-Object { $_.Path })
+        $paths | Should -Be $ExpectedErrors
+    }
+
+    It 'catalog: <Name>' -ForEach $ResolutionCases {
+        $run = {
+            Resolve-VdiApplicationCatalog -CatalogPath $CatalogPath `
+                -ApplicationProfile @($Case.profiles) `
+                -IncludeApplication @($Case.include) `
+                -ExcludeApplication @($Case.exclude)
+        }
+        if ($Case.PSObject.Properties['error']) {
+            $run | Should -Throw -ExpectedMessage $Case.error
+            return
+        }
+        $ids = @(& $run | ForEach-Object { $_.Id })
+        if ($Case.PSObject.Properties['ids']) {
+            $ids | Should -Be @($Case.ids)
+        }
+        if ($Case.PSObject.Properties['count']) {
+            $ids.Count | Should -Be $Case.count
+        }
+    }
+
+    It 'renders the same Packer variables as the page' {
+        $configuration = Get-Content -LiteralPath $ExamplePath -Raw | ConvertFrom-Json
+        ConvertTo-VdiPackerVariable -Configuration $configuration |
+            Should -BeExactly (Get-FixtureText 'build.example.pkrvars.hcl')
+    }
+
+    It 'renders the same MCS plan as the page' {
+        $configuration = Get-Content -LiteralPath $ExamplePath -Raw | ConvertFrom-Json
+        ConvertTo-VdiMcsPlanScript -Configuration $configuration |
+            Should -BeExactly (Get-FixtureText 'build.example.mcs-catalog-plan.ps1')
+    }
+
+    It 'produces an MCS plan that PowerShell can parse' {
+        $configuration = Get-Content -LiteralPath $ExamplePath -Raw | ConvertFrom-Json
+        $parseErrors = $null
+        [void][System.Management.Automation.Language.Parser]::ParseInput(
+            (ConvertTo-VdiMcsPlanScript -Configuration $configuration), [ref]$null, [ref]$parseErrors)
+        $parseErrors.Count | Should -Be 0
+    }
+
+    It 'escapes HCL template sequences and quotes' {
+        $configuration = Get-PatchedConfiguration ([pscustomobject]@{ 'image.hardware.switchName' = 'Lab "A" \ ${x}' })
+        ConvertTo-VdiPackerVariable -Configuration $configuration |
+            Should -Match 'switch_name\s+= "Lab \\"A\\" \\\\ \$\$\{x\}"'
+    }
+
+    It 'names the first and last machines from the naming scheme' {
+        $names = Get-VdiMachineName -NamingScheme 'VDI-ENG-###' -Count 25
+        $names.First | Should -Be 'VDI-ENG-001'
+        $names.Last | Should -Be 'VDI-ENG-025'
     }
 }

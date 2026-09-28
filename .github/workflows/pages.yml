@@ -1,0 +1,53 @@
+name: Image Builder site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - config/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test the page logic before publishing
+        run: node --test tests/web/*.test.mjs
+      - name: Assemble the static site
+        run: |
+          mkdir -p _site/config
+          cp -r site/. _site/
+          cp config/application-catalog.json config/build.example.json \
+            config/windows-locales.json config/windows-time-zones.json _site/config/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

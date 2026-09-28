@@ -2,11 +2,11 @@
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
   <settings pass="windowsPE">
     <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
-      <SetupUILanguage><UILanguage>en-US</UILanguage></SetupUILanguage>
-      <InputLocale>en-US</InputLocale>
-      <SystemLocale>en-US</SystemLocale>
-      <UILanguage>en-US</UILanguage>
-      <UserLocale>en-US</UserLocale>
+      <SetupUILanguage><UILanguage>${ui_language}</UILanguage></SetupUILanguage>
+      <InputLocale>${locale}</InputLocale>
+      <SystemLocale>${locale}</SystemLocale>
+      <UILanguage>${ui_language}</UILanguage>
+      <UserLocale>${locale}</UserLocale>
     </component>
     <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
       <DiskConfiguration>
@@ -48,6 +48,12 @@
     </component>
   </settings>
   <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <InputLocale>${locale}</InputLocale>
+      <SystemLocale>${locale}</SystemLocale>
+      <UILanguage>${ui_language}</UILanguage>
+      <UserLocale>${locale}</UserLocale>
+    </component>
     <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
       <OOBE>
         <HideEULAPage>true</HideEULAPage>
@@ -64,6 +70,7 @@
           </LocalAccount>
         </LocalAccounts>
       </UserAccounts>
+      <TimeZone>${time_zone}</TimeZone>
     </component>
   </settings>
 </unattend>
