@@ -34,7 +34,7 @@ jobs:
           cp config/application-catalog.json config/build.example.json \
             config/windows-locales.json config/windows-time-zones.json _site/config/
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
