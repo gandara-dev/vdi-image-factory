@@ -50,6 +50,6 @@ and use their existing provisioning-scheme rollback procedure.
 
 ## Current limitations
 
-Version `0.3.0` does not run Windows Update, install a VDA, run Sysprep, create
+Version `0.3.1` does not run Windows Update, install a VDA, run Sysprep, create
 hypervisor snapshots, monitor asynchronous MCS tasks, or implement automatic
 rollback. Those environment-specific controls must remain explicit.

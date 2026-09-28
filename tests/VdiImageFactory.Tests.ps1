@@ -5,6 +5,12 @@ BeforeAll {
     Import-Module $ModulePath -Force
 }
 
+Describe 'Module contract' {
+    It 'publishes the documented module version' {
+        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.3.1'
+    }
+}
+
 Describe 'Install-VdiApplication' {
     It 'plans the standard profile by default' {
         $results = @(Install-VdiApplication -CatalogPath $CatalogPath -Simulation)

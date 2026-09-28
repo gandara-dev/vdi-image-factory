@@ -247,6 +247,7 @@ credentials.
 - [Application catalog](docs/application-catalog.md)
 - [Operations guide](docs/operations-guide.md)
 - [Testing guide](docs/testing.md)
+- [Release verification](docs/release-verification.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 
