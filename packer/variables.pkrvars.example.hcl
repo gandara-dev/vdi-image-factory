@@ -7,3 +7,6 @@ image_name       = "vdi-windows-11-2026-09"
 image_version    = "2026.09.1"
 switch_name      = "Default Switch"
 run_optimizer    = false
+application_profiles = ["standard"]
+include_applications  = []
+exclude_applications  = []

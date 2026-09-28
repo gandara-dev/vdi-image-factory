@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-09-28
+
+### Added
+
+- Composable `standard`, `developer`, and `application` image profiles backed by
+  a single application catalog.
+- Profile inheritance, multi-profile selection, per-build package inclusion and
+  exclusion, and explicit select-all support.
+- Catalog validation for missing references, duplicate definitions, unsupported
+  scopes, unknown profiles, and inheritance cycles.
+- Resolved profiles and package IDs in the sealed image manifest.
+- Profile controls for the PowerShell entry point, Packer, and Ansible.
+
+### Changed
+
+- Replaced the enabled/disabled package manifest with a reusable catalog and
+  profile model.
+- Made the smaller `standard` office image the default build composition.
+
 ## [0.2.0] - 2026-09-27
 
 ### Added

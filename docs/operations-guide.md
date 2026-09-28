@@ -4,7 +4,8 @@
 
 - Use a licensed Windows ISO and verify its SHA-256 checksum.
 - Confirm the image index with DISM.
-- Review and approve every package ID and version in `config/apps.json`.
+- Review the selected profiles and every package ID and version in
+  `config/application-catalog.json`.
 - Confirm every package supports machine-wide installation and the target OS.
 - Define Microsoft 365 licensing, activation, update channel, and shared-computer
   activation through an approved Office Deployment Tool configuration.
@@ -26,9 +27,12 @@ Citrix Optimizer should begin in `Analyze` mode. Any optimization template is a
 versioned build input and requires regression testing against the OS, VDA, and
 application set.
 
-The default manifest is intentionally broad for a developer image. Remove
-languages, cloud tools, and desktop applications that the target persona does
-not require. Keep Docker Desktop disabled unless the catalog supports nested
+Start from `standard`, `developer`, or the empty `application` profile. Use
+per-build include/exclude overrides for experiments and update the catalog for
+an approved permanent composition. Preserve the resolved profile names and
+application IDs from the sealed image manifest with the build artifacts.
+
+Keep Docker Desktop outside default profiles unless the target supports nested
 virtualization and the organization has approved its licensing and resource use.
 
 ## MCS publication

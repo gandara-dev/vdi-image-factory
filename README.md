@@ -27,10 +27,10 @@ No Hyper-V host, Windows ISO, Citrix site, or SDK is contacted.
 ```powershell
 git clone https://github.com/gandara-dev/vdi-image-factory.git
 cd vdi-image-factory
-./scripts/Invoke-VdiImagePipeline.ps1 -Simulation
+./scripts/Invoke-VdiImagePipeline.ps1 -ApplicationProfile standard -Simulation
 ```
 
-The result shows the enabled application plan, Optimizer invocation, seal
+The result shows the resolved application plan, Optimizer invocation, seal
 metadata, and the asynchronous MCS publication that would be requested. Every
 hostname, path, UUID, and catalog name used by this mode is synthetic.
 
@@ -40,7 +40,7 @@ hostname, path, UUID, and catalog name used by this mode is synthetic.
 |---|---|
 | `packer/` | Windows 11 generation-2 Hyper-V template and unattended setup |
 | `src/VdiImageFactory/` | Testable PowerShell module containing every stage |
-| `config/apps.json` | Declarative WinGet application manifest |
+| `config/application-catalog.json` | Application library and composable image profiles |
 | `ansible/` | Optional remote Windows customization playbook |
 | `scripts/` | Operator entry points for simulation and MCS publication |
 | `tests/` | Infrastructure-free Pester tests |
@@ -70,7 +70,7 @@ default index is only an example. The WinRM password validator accepts a
 restricted XML-safe character set because it is rendered into unattended XML.
 
 The template pins the official Hyper-V plugin to `1.1.5`, creates a generation-2
-VM with Secure Boot, installs enabled packages from `config/apps.json`, writes
+VM with Secure Boot, resolves packages from `config/application-catalog.json`, writes
 `C:\ProgramData\VdiImageFactory\image-manifest.json`, shuts down, and compacts
 the disk. Add organization-specific VDA installation and Windows Update stages
 before using the output in production.
@@ -79,24 +79,65 @@ The unattended file contains a temporary local `packer` administrator. Rotate
 or remove that account in your production hardening stage. Use only ephemeral
 build credentials.
 
-## Applications
+## Customizable application profiles
 
-An entry is installed when `enabled` is not `false`:
+The catalog separates the package library from image profiles. Applications are
+defined once with an exact WinGet ID:
 
 ```json
 {
   "name": "7-Zip",
   "id": "7zip.7zip",
   "version": "",
-  "scope": "machine",
-  "enabled": true
+  "scope": "machine"
 }
 ```
 
-The default developer image includes Chrome, Visual Studio Code, Git, GitHub CLI,
-Python 3.13, Node.js LTS, PowerShell 7, .NET SDK 10, Go, OpenJDK 21, Rustup,
-Azure CLI, Azure Storage Explorer, Terraform, kubectl, Windows Terminal, Postman,
-Microsoft 365 Apps for enterprise, 7-Zip, and the Visual C++ runtime.
+Profiles then select package IDs and can inherit another profile:
+
+| Profile | Default content | Intended use |
+|---|---|---|
+| `standard` | Chrome, Firefox, Microsoft 365, 7-Zip, and Visual C++ Runtime | General office desktop |
+| `developer` | Everything in `standard` plus VS Code, Git, GitHub CLI, Python, Node.js, PowerShell, .NET, Go, Java, Rust, Azure tools, Terraform, kubectl, Windows Terminal, and Postman | Engineering workstation |
+| `application` | Empty | Purpose-built image with an explicit application selection |
+
+Preview any profile without changing the machine:
+
+```powershell
+./scripts/Invoke-VdiImagePipeline.ps1 `
+  -ApplicationProfile developer `
+  -SkipPublish `
+  -Simulation
+```
+
+Add or remove tools for a single build without editing the catalog:
+
+```powershell
+./scripts/Invoke-VdiImagePipeline.ps1 `
+  -ApplicationProfile developer `
+  -IncludeApplication 'Notepad++.Notepad++' `
+  -ExcludeApplication 'Microsoft.OpenJDK.21','Rustlang.Rustup' `
+  -SkipPublish `
+  -Simulation
+```
+
+Build an application-specific plan by choosing exact entries from the library:
+
+```powershell
+./scripts/Invoke-VdiImagePipeline.ps1 `
+  -ApplicationProfile application `
+  -IncludeApplication 'Google.Chrome','Postman.Postman' `
+  -SkipPublish `
+  -Simulation
+```
+
+Use `-IncludeApplication '*'` with the `application` profile to select every
+catalog entry. Multiple profiles can be combined, duplicates are removed, and
+`-ExcludeApplication` is applied last. To make a permanent change, add or remove
+IDs in a profile's `applications` array. To introduce new software, add its
+metadata to the top-level `applications` array and reference that ID from a
+profile. Invalid IDs, duplicate IDs, missing parents, and inheritance cycles
+stop the build before WinGet runs.
 
 The ID is passed to WinGet with exact matching, silent mode, agreement flags,
 and explicit scope. `machine` is the default so software is available beyond
@@ -110,10 +151,15 @@ configuration appropriate to the VDI licensing model. Replace the generic
 WinGet package with an approved Office Deployment Tool configuration when
 shared-computer activation or channel control is required.
 
-Docker Desktop is present but disabled by default because VDI use requires a
-separate licensing review, WSL 2 or Hyper-V support, and nested virtualization.
-Enable it only for a compatible developer catalog. Notepad++ is also provided as
-an optional disabled entry because Visual Studio Code is the default editor.
+Docker Desktop and Notepad++ are available in the library but are not selected
+by a default profile. Docker Desktop requires a separate licensing review, WSL 2
+or Hyper-V support, and nested virtualization. Include it only in a compatible
+developer image.
+
+Every sealed image manifest records the selected profile names and resolved
+application IDs, making the package composition auditable. See the
+[application catalog guide](docs/application-catalog.md) for schema and Packer
+and Ansible examples.
 
 ## Citrix Optimizer
 
@@ -198,6 +244,7 @@ credentials.
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Application catalog](docs/application-catalog.md)
 - [Operations guide](docs/operations-guide.md)
 - [Testing guide](docs/testing.md)
 - [Security policy](SECURITY.md)

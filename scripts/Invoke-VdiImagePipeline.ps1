@@ -1,8 +1,12 @@
 [CmdletBinding()]
 param(
-    [string]$ApplicationManifestPath = (
-        Join-Path $PSScriptRoot '..\config\apps.json'
+    [Alias('ApplicationManifestPath')]
+    [string]$ApplicationCatalogPath = (
+        Join-Path $PSScriptRoot '..\config\application-catalog.json'
     ),
+    [string[]]$ApplicationProfile = @('standard'),
+    [string[]]$IncludeApplication = @(),
+    [string[]]$ExcludeApplication = @(),
     [string]$OptimizerEnginePath = 'C:\CitrixOptimizer\CtxOptimizerEngine.ps1',
     [string]$OptimizerTemplate = 'AutoSelect',
     [ValidateSet('Analyze', 'Execute')][string]$OptimizerMode = 'Execute',
@@ -21,7 +25,10 @@ $modulePath = Join-Path $PSScriptRoot '..\src\VdiImageFactory\VdiImageFactory.ps
 Import-Module $modulePath -Force
 
 $parameters = @{
-    ApplicationManifestPath = $ApplicationManifestPath
+    ApplicationCatalogPath = $ApplicationCatalogPath
+    ApplicationProfile = $ApplicationProfile
+    IncludeApplication = $IncludeApplication
+    ExcludeApplication = $ExcludeApplication
     OptimizerEnginePath = $OptimizerEnginePath
     OptimizerTemplate = $OptimizerTemplate
     OptimizerMode = $OptimizerMode

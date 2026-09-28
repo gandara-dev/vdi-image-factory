@@ -6,7 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $pipelineScript = Join-Path $repositoryRoot 'scripts/Invoke-VdiImagePipeline.ps1'
-$result = (& $pipelineScript -Simulation | Out-String) | ConvertFrom-Json -Depth 10
+$result = (& $pipelineScript -ApplicationProfile developer -Simulation | Out-String) |
+    ConvertFrom-Json -Depth 10
 
 $esc = [char]27
 $green = "$esc[32m"
@@ -34,7 +35,7 @@ $header = [ordered]@{
 } | ConvertTo-Json -Compress
 
 Add-DemoFrame 0.0 "${cyan}VDI IMAGE FACTORY${reset}  ${dim}Golden image as reviewed code${reset}`r`n`r`n"
-Add-DemoFrame 0.6 "${yellow}PS>${reset} ./scripts/Invoke-VdiImagePipeline.ps1 -Simulation`r`n`r`n"
+Add-DemoFrame 0.6 "${yellow}PS>${reset} ./scripts/Invoke-VdiImagePipeline.ps1 -ApplicationProfile developer -Simulation`r`n`r`n"
 
 foreach ($application in $result.Applications) {
     Add-DemoFrame 0.35 "${green}[planned]${reset} app       $($application.Name)  ${dim}$($application.Id)${reset}`r`n"

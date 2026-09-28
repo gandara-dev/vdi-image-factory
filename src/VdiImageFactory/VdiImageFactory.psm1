@@ -1,22 +1,22 @@
 Set-StrictMode -Version Latest
 
-function Get-ApplicationManifest {
+function Get-ApplicationCatalog {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "Application manifest was not found: $Path"
+        throw "Application catalog was not found: $Path"
     }
 
     try {
         $manifest = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
     }
     catch {
-        throw "Application manifest is not valid JSON: $($_.Exception.Message)"
+        throw "Application catalog is not valid JSON: $($_.Exception.Message)"
     }
 
     if ($null -eq $manifest.applications) {
-        throw "Application manifest must contain an 'applications' array."
+        throw "Application catalog must contain an 'applications' array."
     }
 
     $ids = [System.Collections.Generic.HashSet[string]]::new(
@@ -35,11 +35,7 @@ function Get-ApplicationManifest {
         }
 
         $hasVersion = $application.PSObject.Properties.Name -contains 'version'
-        $hasEnabled = $application.PSObject.Properties.Name -contains 'enabled'
         $hasScope = $application.PSObject.Properties.Name -contains 'scope'
-        if ($hasEnabled -and $application.enabled -isnot [bool]) {
-            throw "Application 'enabled' values must be boolean: $($application.id)"
-        }
         if ($hasScope -and $application.scope -notin @('machine', 'user')) {
             throw "Application 'scope' must be 'machine' or 'user': $($application.id)"
         }
@@ -49,11 +45,168 @@ function Get-ApplicationManifest {
                 Id = [string]$application.id
                 Version = if ($hasVersion) { [string]$application.version } else { '' }
                 Scope = if ($hasScope) { [string]$application.scope } else { 'machine' }
-                Enabled = if ($hasEnabled) { [bool]$application.enabled } else { $true }
             })
     }
 
-    return @($normalizedApplications)
+    $normalizedProfiles = [System.Collections.Generic.List[object]]::new()
+    $profileNames = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    if ($null -eq $manifest.profiles) {
+        throw "Application catalog must contain a 'profiles' array."
+    }
+
+    foreach ($profileDefinition in @($manifest.profiles)) {
+        if ([string]::IsNullOrWhiteSpace([string]$profileDefinition.name)) {
+            throw "Every profile requires a non-empty 'name' value."
+        }
+        if (-not $profileNames.Add([string]$profileDefinition.name)) {
+            throw "Profile names must be unique: $($profileDefinition.name)"
+        }
+        if ($null -eq $profileDefinition.applications) {
+            throw "Profile must contain an 'applications' array: $($profileDefinition.name)"
+        }
+
+        $extends = if ($profileDefinition.PSObject.Properties.Name -contains 'extends') {
+            @($profileDefinition.extends | ForEach-Object { [string]$_ })
+        }
+        else {
+            @()
+        }
+        $profileApplications = @($profileDefinition.applications | ForEach-Object { [string]$_ })
+        $normalizedProfiles.Add([pscustomobject]@{
+                Name = [string]$profileDefinition.name
+                Description = if ($profileDefinition.PSObject.Properties.Name -contains 'description') {
+                    [string]$profileDefinition.description
+                }
+                else { '' }
+                Extends = $extends
+                Applications = $profileApplications
+            })
+    }
+
+    $knownIds = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($application in $normalizedApplications) {
+        [void]$knownIds.Add($application.Id)
+    }
+    foreach ($profileDefinition in $normalizedProfiles) {
+        foreach ($id in $profileDefinition.Applications) {
+            if (-not $knownIds.Contains($id)) {
+                throw "Profile '$($profileDefinition.Name)' references an unknown application: $id"
+            }
+        }
+        foreach ($parent in $profileDefinition.Extends) {
+            if (-not $profileNames.Contains($parent)) {
+                throw "Profile '$($profileDefinition.Name)' extends an unknown profile: $parent"
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Applications = @($normalizedApplications)
+        Profiles = @($normalizedProfiles)
+    }
+}
+
+function Resolve-VdiApplicationCatalog {
+    <#
+    .SYNOPSIS
+    Resolves one or more image profiles into an ordered application plan.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][Alias('ManifestPath')][string]$CatalogPath,
+        [Alias('Profile')][string[]]$ApplicationProfile = @('standard'),
+        [string[]]$IncludeApplication = @(),
+        [string[]]$ExcludeApplication = @()
+    )
+
+    $catalog = Get-ApplicationCatalog -Path $CatalogPath
+    if ($ApplicationProfile.Count -eq 0) {
+        throw 'At least one application profile is required.'
+    }
+
+    $profilesByName = @{}
+    foreach ($item in $catalog.Profiles) {
+        $profilesByName[$item.Name.ToLowerInvariant()] = $item
+    }
+    $selectedIds = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $resolvedProfiles = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $activeProfiles = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+
+    function Add-ProfileApplication {
+        param([Parameter(Mandatory)][string]$Name)
+
+        $key = $Name.ToLowerInvariant()
+        if (-not $profilesByName.ContainsKey($key)) {
+            throw "Application profile was not found: $Name"
+        }
+        if ($resolvedProfiles.Contains($key)) {
+            return
+        }
+        if (-not $activeProfiles.Add($key)) {
+            throw "Application profile inheritance contains a cycle at: $Name"
+        }
+
+        $item = $profilesByName[$key]
+        foreach ($parent in $item.Extends) {
+            Add-ProfileApplication -Name $parent
+        }
+        foreach ($id in $item.Applications) {
+            [void]$selectedIds.Add($id)
+        }
+
+        [void]$activeProfiles.Remove($key)
+        [void]$resolvedProfiles.Add($key)
+    }
+
+    foreach ($profileName in $ApplicationProfile) {
+        if ([string]::IsNullOrWhiteSpace($profileName)) {
+            throw 'Application profile names cannot be empty.'
+        }
+        Add-ProfileApplication -Name $profileName
+    }
+
+    $knownIds = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($application in $catalog.Applications) {
+        [void]$knownIds.Add($application.Id)
+    }
+    foreach ($id in $IncludeApplication) {
+        if ($id -eq '*') {
+            foreach ($application in $catalog.Applications) {
+                [void]$selectedIds.Add($application.Id)
+            }
+        }
+        elseif (-not $knownIds.Contains($id)) {
+            throw "Included application was not found in the catalog: $id"
+        }
+        else {
+            [void]$selectedIds.Add($id)
+        }
+    }
+    foreach ($id in $ExcludeApplication) {
+        if ($id -eq '*') {
+            $selectedIds.Clear()
+        }
+        elseif (-not $knownIds.Contains($id)) {
+            throw "Excluded application was not found in the catalog: $id"
+        }
+        else {
+            [void]$selectedIds.Remove($id)
+        }
+    }
+
+    return @($catalog.Applications | Where-Object { $selectedIds.Contains($_.Id) })
 }
 
 function Invoke-WingetCommand {
@@ -71,22 +224,28 @@ function Invoke-WingetCommand {
 function Install-VdiApplication {
     <#
     .SYNOPSIS
-    Installs enabled applications from a JSON manifest by using WinGet.
+    Resolves application profiles and installs the selected packages with WinGet.
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$ManifestPath,
+        [Parameter(Mandatory)][Alias('ManifestPath')][string]$CatalogPath,
+        [Alias('Profile')][string[]]$ApplicationProfile = @('standard'),
+        [string[]]$IncludeApplication = @(),
+        [string[]]$ExcludeApplication = @(),
         [switch]$Simulation
     )
 
-    $applications = @(Get-ApplicationManifest -Path $ManifestPath)
-    $enabledApplications = @($applications | Where-Object Enabled)
+    $applications = @(Resolve-VdiApplicationCatalog `
+            -CatalogPath $CatalogPath `
+            -ApplicationProfile $ApplicationProfile `
+            -IncludeApplication $IncludeApplication `
+            -ExcludeApplication $ExcludeApplication)
 
     if (-not $Simulation -and -not (Get-Command winget -ErrorAction SilentlyContinue)) {
         throw 'WinGet is required to install applications.'
     }
 
-    foreach ($application in $enabledApplications) {
+    foreach ($application in $applications) {
         $result = [ordered]@{
             Stage = 'Applications'
             Name = $application.Name
@@ -185,6 +344,8 @@ function Complete-VdiImage {
     param(
         [string]$ManifestPath = 'C:\ProgramData\VdiImageFactory\image-manifest.json',
         [string]$ImageVersion = 'dev',
+        [string[]]$ApplicationProfile = @(),
+        [string[]]$ApplicationId = @(),
         [switch]$AllowPendingReboot,
         [switch]$Shutdown,
         [switch]$Simulation
@@ -196,11 +357,13 @@ function Complete-VdiImage {
     }
 
     $metadata = [ordered]@{
-        schemaVersion = 1
+        schemaVersion = 2
         imageVersion = $ImageVersion
         builtAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
         computerName = if ($Simulation) { 'SIMULATED-VDI' } else { $env:COMPUTERNAME }
         pendingReboot = $pendingReboot
+        applicationProfiles = @($ApplicationProfile)
+        applications = @($ApplicationId)
     }
 
     if (-not $Simulation -and $PSCmdlet.ShouldProcess($ManifestPath, 'Write image manifest')) {
@@ -294,7 +457,10 @@ function Invoke-VdiImagePipeline {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$ApplicationManifestPath,
+        [Parameter(Mandatory)][Alias('ApplicationManifestPath')][string]$ApplicationCatalogPath,
+        [string[]]$ApplicationProfile = @('standard'),
+        [string[]]$IncludeApplication = @(),
+        [string[]]$ExcludeApplication = @(),
         [string]$OptimizerEnginePath = 'C:\CitrixOptimizer\CtxOptimizerEngine.ps1',
         [string]$OptimizerTemplate = 'AutoSelect',
         [ValidateSet('Analyze', 'Execute')][string]$OptimizerMode = 'Execute',
@@ -315,7 +481,10 @@ function Invoke-VdiImagePipeline {
     }
 
     $applications = @(Install-VdiApplication `
-        -ManifestPath $ApplicationManifestPath `
+        -CatalogPath $ApplicationCatalogPath `
+        -ApplicationProfile $ApplicationProfile `
+        -IncludeApplication $IncludeApplication `
+        -ExcludeApplication $ExcludeApplication `
         -Simulation:$Simulation)
 
     $optimizer = if ($SkipOptimizer) {
@@ -332,6 +501,8 @@ function Invoke-VdiImagePipeline {
     $seal = Complete-VdiImage `
         -ManifestPath $ImageManifestPath `
         -ImageVersion $ImageVersion `
+        -ApplicationProfile $ApplicationProfile `
+        -ApplicationId @($applications.Id) `
         -Simulation:$Simulation
 
     $publication = if ($SkipPublish) {
@@ -347,6 +518,7 @@ function Invoke-VdiImagePipeline {
 
     [pscustomobject]@{
         Mode = if ($Simulation) { 'Simulation' } else { 'Live' }
+        ApplicationProfiles = @($ApplicationProfile)
         Applications = $applications
         Optimizer = $optimizer
         Seal = $seal
@@ -361,4 +533,5 @@ Export-ModuleMember -Function @(
     'Invoke-CitrixOptimizer'
     'Invoke-VdiImagePipeline'
     'Publish-McsImage'
+    'Resolve-VdiApplicationCatalog'
 )

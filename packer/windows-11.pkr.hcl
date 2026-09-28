@@ -52,6 +52,24 @@ variable "image_version" {
   default = "dev"
 }
 
+variable "application_profiles" {
+  type        = list(string)
+  default     = ["standard"]
+  description = "Application profiles to combine from the catalog."
+}
+
+variable "include_applications" {
+  type        = list(string)
+  default     = []
+  description = "Additional exact WinGet IDs from the catalog, or an asterisk for all."
+}
+
+variable "exclude_applications" {
+  type        = list(string)
+  default     = []
+  description = "Exact WinGet IDs to remove after profile resolution."
+}
+
 variable "switch_name" {
   type    = string
   default = "Default Switch"
@@ -132,13 +150,16 @@ build {
   }
 
   provisioner "file" {
-    source      = abspath("${path.root}/../config/apps.json")
-    destination = "C:\\Windows\\Temp\\apps.json"
+    source      = abspath("${path.root}/../config/application-catalog.json")
+    destination = "C:\\Windows\\Temp\\application-catalog.json"
   }
 
   provisioner "powershell" {
     environment_vars = [
-      "VIF_APP_MANIFEST=C:\\Windows\\Temp\\apps.json",
+      "VIF_APP_CATALOG=C:\\Windows\\Temp\\application-catalog.json",
+      "VIF_APP_PROFILES=${join(",", var.application_profiles)}",
+      "VIF_APP_INCLUDE=${join(",", var.include_applications)}",
+      "VIF_APP_EXCLUDE=${join(",", var.exclude_applications)}",
       "VIF_IMAGE_VERSION=${var.image_version}",
       "VIF_RUN_OPTIMIZER=${var.run_optimizer}",
       "VIF_OPTIMIZER_ENGINE=${var.optimizer_engine_path}",

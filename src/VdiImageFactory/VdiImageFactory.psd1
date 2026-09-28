@@ -1,6 +1,6 @@
 @{
     RootModule = 'VdiImageFactory.psm1'
-    ModuleVersion = '0.2.0'
+    ModuleVersion = '0.3.0'
     GUID = 'dd923999-330c-43ee-8f3f-7e79ddc90c8a'
     Author = 'Mateus Gandara'
     CompanyName = 'Community'
@@ -13,6 +13,7 @@
         'Invoke-CitrixOptimizer'
         'Invoke-VdiImagePipeline'
         'Publish-McsImage'
+        'Resolve-VdiApplicationCatalog'
     )
     CmdletsToExport = @()
     VariablesToExport = @()

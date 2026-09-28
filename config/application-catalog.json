@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "applications": [
+    { "name": "7-Zip", "id": "7zip.7zip", "version": "", "scope": "machine" },
+    { "name": "Google Chrome", "id": "Google.Chrome", "version": "", "scope": "machine" },
+    { "name": "Mozilla Firefox", "id": "Mozilla.Firefox", "version": "", "scope": "machine" },
+    { "name": "Visual Studio Code", "id": "Microsoft.VisualStudioCode", "version": "", "scope": "machine" },
+    { "name": "Git", "id": "Git.Git", "version": "", "scope": "machine" },
+    { "name": "GitHub CLI", "id": "GitHub.cli", "version": "", "scope": "machine" },
+    { "name": "Python 3.13", "id": "Python.Python.3.13", "version": "", "scope": "machine" },
+    { "name": "Node.js LTS", "id": "OpenJS.NodeJS.LTS", "version": "", "scope": "machine" },
+    { "name": "PowerShell 7", "id": "Microsoft.PowerShell", "version": "", "scope": "machine" },
+    { "name": ".NET SDK 10", "id": "Microsoft.DotNet.SDK.10", "version": "", "scope": "machine" },
+    { "name": "Go", "id": "GoLang.Go", "version": "", "scope": "machine" },
+    { "name": "Microsoft OpenJDK 21", "id": "Microsoft.OpenJDK.21", "version": "", "scope": "machine" },
+    { "name": "Rustup", "id": "Rustlang.Rustup", "version": "", "scope": "machine" },
+    { "name": "Azure CLI", "id": "Microsoft.AzureCLI", "version": "", "scope": "machine" },
+    { "name": "Azure Storage Explorer", "id": "Microsoft.Azure.StorageExplorer", "version": "", "scope": "machine" },
+    { "name": "Terraform", "id": "Hashicorp.Terraform", "version": "", "scope": "machine" },
+    { "name": "Kubernetes CLI", "id": "Kubernetes.kubectl", "version": "", "scope": "machine" },
+    { "name": "Windows Terminal", "id": "Microsoft.WindowsTerminal", "version": "", "scope": "machine" },
+    { "name": "Postman", "id": "Postman.Postman", "version": "", "scope": "machine" },
+    { "name": "Microsoft 365 Apps for enterprise", "id": "Microsoft.Office", "version": "", "scope": "machine" },
+    { "name": "Microsoft Visual C++ 2015-2022 Redistributable (x64)", "id": "Microsoft.VCRedist.2015+.x64", "version": "", "scope": "machine" },
+    { "name": "Notepad++", "id": "Notepad++.Notepad++", "version": "", "scope": "machine" },
+    { "name": "Docker Desktop", "id": "Docker.DockerDesktop", "version": "", "scope": "machine" }
+  ],
+  "profiles": [
+    {
+      "name": "standard",
+      "description": "General-purpose office image with browsers and common utilities.",
+      "extends": [],
+      "applications": [
+        "7zip.7zip",
+        "Google.Chrome",
+        "Mozilla.Firefox",
+        "Microsoft.Office",
+        "Microsoft.VCRedist.2015+.x64"
+      ]
+    },
+    {
+      "name": "developer",
+      "description": "Standard image plus the default engineering toolchain.",
+      "extends": ["standard"],
+      "applications": [
+        "Microsoft.VisualStudioCode",
+        "Git.Git",
+        "GitHub.cli",
+        "Python.Python.3.13",
+        "OpenJS.NodeJS.LTS",
+        "Microsoft.PowerShell",
+        "Microsoft.DotNet.SDK.10",
+        "GoLang.Go",
+        "Microsoft.OpenJDK.21",
+        "Rustlang.Rustup",
+        "Microsoft.AzureCLI",
+        "Microsoft.Azure.StorageExplorer",
+        "Hashicorp.Terraform",
+        "Kubernetes.kubectl",
+        "Microsoft.WindowsTerminal",
+        "Postman.Postman"
+      ]
+    },
+    {
+      "name": "application",
+      "description": "Empty base for an application-specific image; select packages with IncludeApplication.",
+      "extends": [],
+      "applications": []
+    }
+  ]
+}

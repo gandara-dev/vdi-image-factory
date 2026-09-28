@@ -6,5 +6,7 @@ inventories, or generated images.
 
 Behavior changes require Pester coverage and successful simulation. Packer or
 Ansible changes must pass their format, validation, syntax, and lint checks.
+Application catalog changes must keep IDs unique, preserve valid profile
+references, and document material licensing or platform requirements.
 Document changes to build inputs, sealing behavior, MCS publication, security
 boundaries, or rollback expectations in the README and changelog.
