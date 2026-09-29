@@ -7,7 +7,7 @@ BeforeAll {
 
 Describe 'Module contract' {
     It 'publishes the documented module version' {
-        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.4.1'
+        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.4.2'
     }
 }
 

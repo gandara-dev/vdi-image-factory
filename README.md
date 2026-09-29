@@ -14,8 +14,8 @@ and a separate command publishes the resulting snapshot through Citrix MCS.
 ## Try it: Image Builder
 
 **[Open the Image Builder](https://gandara-dev.github.io/vdi-image-factory/)**:
-design a golden image and its MCS machine catalog in the browser, with no
-installation.
+a step-by-step wizard, like the Studio catalog wizard, for a golden image and
+its MCS machine catalog. It runs in the browser with no installation.
 
 ![Image Builder](docs/image-builder.jpg)
 
