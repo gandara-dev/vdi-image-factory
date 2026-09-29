@@ -4,10 +4,14 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.1] - 2026-09-29
 
 ### Changed
 
+- Image Builder redesigned as a build sheet: numbered sections of ruled
+  fields, profiles and applications as checkable rows, and the generated
+  files in a tabbed output panel. Validation and generated output are
+  unchanged.
 - License changed from MIT to PolyForm Shield 1.0.0. Releases up to v0.4.0
   remain available under the MIT license.
 
