@@ -11,7 +11,16 @@ and a separate command publishes the resulting snapshot through Citrix MCS.
 
 ![Infrastructure-free pipeline demo](docs/demo.gif)
 
-## Try it: Image Builder
+## Try it
+
+**Run it for real in your browser:** a codespace with PowerShell 7, Packer
+1.16.1, and the Image Builder page. Simulate the pipeline, turn a build sheet
+into Packer variables and an MCS plan, and run `packer validate`. A GitHub
+account is needed; the codespace uses your own free Codespaces quota.
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/gandara-dev/vdi-image-factory?quickstart=1)
+
+### Image Builder
 
 **[Open the Image Builder](https://gandara-dev.github.io/vdi-image-factory/)**:
 a step-by-step wizard, like the Studio catalog wizard, for a golden image and

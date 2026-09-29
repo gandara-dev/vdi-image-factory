@@ -6,6 +6,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [0.4.2] - 2026-09-29
 
+### Added
+
+- GitHub Codespaces configuration: PowerShell 7, Packer 1.16.1 (checksum
+  verified), Pester, and the Image Builder on a forwarded port.
+
 ### Changed
 
 - Image Builder redesigned as a step-by-step wizard in the style of the
