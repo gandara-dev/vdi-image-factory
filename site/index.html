@@ -8,26 +8,14 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="banner" role="note">
-    Demo with synthetic example data. This page only generates configuration files in your browser;
-    nothing is built, uploaded, or sent anywhere.
-  </div>
-
-  <header class="top">
-    <div>
-      <h1>Image Builder</h1>
-      <p>
-        Design a Windows 11 golden image for Citrix VDI: hardware, regional settings, and applications,
-        plus the MCS machine catalog that will use it. The same validation runs in the
-        <a href="https://github.com/gandara-dev/vdi-image-factory">VDI Image Factory</a> PowerShell module.
-      </p>
-    </div>
-    <div class="toolbar">
-      <button type="button" id="load-example">Load example</button>
-      <label class="button" for="import-file">Import build.json</label>
-      <input type="file" id="import-file" accept="application/json,.json" class="sr-only">
-      <button type="button" id="share">Copy share link</button>
-    </div>
+  <header class="bar">
+    <a class="name" href="https://github.com/gandara-dev/vdi-image-factory">vdi-image-factory</a>
+    <span class="dim">image builder · build sheet for a Windows 11 golden image and its MCS catalog · runs in your browser</span>
+    <span class="grow"></span>
+    <button type="button" id="load-example">load example</button>
+    <label class="button" for="import-file">import build.json</label>
+    <input type="file" id="import-file" accept="application/json,.json" class="sr-only">
+    <button type="button" id="share">copy share link</button>
   </header>
 
   <main>
@@ -230,7 +218,7 @@
     </form>
 
     <aside class="output card" aria-labelledby="s-output">
-      <h2 id="s-output">Build plan</h2>
+      <h2 id="s-output">Output</h2>
       <div id="status" class="status" role="status"></div>
       <dl class="summary" id="summary"></dl>
       <ul class="problems" id="problems"></ul>
