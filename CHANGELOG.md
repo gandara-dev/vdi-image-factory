@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-09-29
+
+### Changed
+
+- Image Builder redesigned as a step-by-step wizard in the style of the
+  Citrix Studio catalog wizard: Image, Build VM, Language and region,
+  Applications, Citrix Optimizer, Machine catalog, and Summary. Next checks
+  each step before moving on, and the Summary lists every setting and offers
+  the generated files to view, copy, or download. Validation and generated
+  output are unchanged.
+
 ## [0.4.1] - 2026-09-29
 
 ### Changed

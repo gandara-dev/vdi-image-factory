@@ -1,7 +1,8 @@
 # Image Builder
 
-The Image Builder is a static page that designs a golden image and, optionally,
-the MCS machine catalog that will use it. It is published at
+The Image Builder is a static page that walks through a golden image and,
+optionally, the MCS machine catalog that will use it, one step at a time, like
+the Create Machine Catalog wizard in Citrix Studio. It is published at
 <https://gandara-dev.github.io/vdi-image-factory/> and can run from a clone:
 
 ```powershell
@@ -17,16 +18,25 @@ reference files, validates what you enter, and generates files for download. It
 does not build images, contact Hyper-V or Citrix, or send data anywhere. Every
 default value is synthetic.
 
+## The wizard
+
+The steps are listed on the left. **Next** checks the current step and stays
+on it until its problems are fixed; a step with a problem shows a red mark.
+You can go back to any step at any time. The **Summary** step lists every
+setting, describes what the build does, and offers each generated file to
+view, copy, or download. **Open build.json** loads a saved configuration and
+jumps to the summary; **Copy link** puts the configuration in a shareable URL.
+
 ## What you can configure
 
-| Section | Settings | Where it is applied |
+| Step | Settings | Where it is applied |
 |---|---|---|
 | Image | Name, version, Windows edition index, optional ISO location and SHA-256 checksum | Packer variables |
 | Build VM | vCPUs, memory, system disk, Hyper-V switch | Packer (generation 2, Secure Boot) |
-| Regional | Display language, locale and keyboard, Windows time zone | Unattended answer file |
+| Language and region | Display language, locale and keyboard, Windows time zone | Unattended answer file |
 | Applications | One or more profiles plus per-package additions and removals | `Install-VdiApplication` in the guest |
 | Citrix Optimizer | Enabled or skipped, template | Guest customization |
-| MCS catalog | Catalog and provisioning scheme names, hosting unit, naming scheme, machine count, domain, OU, pooled or assigned, per-machine vCPUs and memory | Reviewed Citrix SDK plan |
+| Machine catalog | Plan or skip; catalog and provisioning scheme names, hosting unit, naming scheme, machine count, domain, OU, pooled or assigned, per-machine vCPUs and memory | Reviewed Citrix SDK plan |
 
 ### Why the domain is not part of the image
 
@@ -34,14 +44,14 @@ With Machine Creation Services, computer names, the domain, and the OU belong
 to the catalog's identity pool. MCS creates one AD computer account per machine
 and gives each machine its identity when it is provisioned, so the same golden
 image serves every machine in the catalog. The Image Builder therefore keeps
-the image settings and the MCS catalog in separate sections, and only the
+the image settings and the MCS catalog in separate steps, and only the
 catalog plan uses the naming scheme, domain, and OU.
 
 ## Generated files
 
 | File | Contents |
 |---|---|
-| `build.json` | The complete configuration. Import it back into the page, or pass it to `New-VdiBuild.ps1`. |
+| `build.json` | The complete configuration. Open it again in the page, or pass it to `New-VdiBuild.ps1`. |
 | `build.auto.pkrvars.hcl` | Packer variables for the image. It never contains the WinRM password. |
 | `mcs-catalog-plan.ps1` | Citrix SDK commands that create the identity pool, provisioning scheme, broker catalog, AD accounts, and VMs, then register the machines. |
 | `commands.ps1` | The commands to validate, simulate, and build from the downloaded files. |

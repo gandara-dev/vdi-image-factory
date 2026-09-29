@@ -25,6 +25,16 @@ const DEFAULT_MCS = {
   machine: { cpus: 2, memoryMb: 8192 },
 };
 
+const STEPS = [
+  { id: 'image', title: 'Image' },
+  { id: 'vm', title: 'Build VM' },
+  { id: 'region', title: 'Language and region' },
+  { id: 'apps', title: 'Applications' },
+  { id: 'optimizer', title: 'Citrix Optimizer' },
+  { id: 'catalog', title: 'Machine catalog' },
+  { id: 'summary', title: 'Summary' },
+];
+
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -32,7 +42,9 @@ let reference;
 let example;
 let config;
 let savedMcs = structuredClone(DEFAULT_MCS);
-let activeTab = 'plan';
+let current = 0;
+const visited = new Set(['image']);
+const checked = new Set();
 
 // ------------------------------------------------------------------ utilities
 
@@ -101,15 +113,38 @@ function decodeConfig(text) {
 }
 
 function gb(mb) {
-  return `${Math.round(mb / 1024)} GB`;
+  return `${Math.round((mb || 0) / 1024)} GB`;
 }
 
-// --------------------------------------------------------------- form setup
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
+// ---------------------------------------------------------------- validation
+
+function stepOf(path) {
+  if (path.startsWith('mcs')) return 'catalog';
+  if (path.startsWith('image.hardware')) return 'vm';
+  if (path.startsWith('image.regional')) return 'region';
+  if (path.startsWith('image.applications')) return 'apps';
+  if (path.startsWith('image.optimizer')) return 'optimizer';
+  return 'image';
+}
+
+function allErrors() {
+  return validateConfiguration(config, reference);
+}
+
+function errorsFor(stepId, errors = allErrors()) {
+  return errors.filter((error) => stepOf(error.path) === stepId);
+}
+
+// ---------------------------------------------------------------- form setup
 
 function fillSelect(select, options, value) {
-  const values = options.map((option) => option.value);
+  const values = options.map((option) => String(option.value));
   const all = [...options];
-  if (value != null && !values.includes(value)) {
+  if (value != null && !values.includes(String(value))) {
     all.push({ value, label: `${value} (custom)` });
   }
   select.innerHTML = all
@@ -125,48 +160,37 @@ function sizeOptions(values) {
 }
 
 function populateForm() {
-  const locales = reference.locales.map((item) => ({ value: item.id, label: `${item.name} — ${item.id}` }));
+  const locales = reference.locales.map((item) => ({ value: item.id, label: `${item.name} (${item.id})` }));
   const zones = reference.timeZones.map((item) => ({ value: item.id, label: `(UTC${item.utcOffset}) ${item.id}` }));
-  const image = config.image || {};
+  const image = config.image;
+  const mcs = config.mcs || savedMcs;
   fillSelect($('#f-memory'), sizeOptions(MEMORY_GB), getPath(image, 'hardware.memoryMb'));
   fillSelect($('#f-disk'), sizeOptions(DISK_GB), getPath(image, 'hardware.diskSizeMb'));
   fillSelect($('#f-ui'), locales, getPath(image, 'regional.uiLanguage'));
   fillSelect($('#f-locale'), locales, getPath(image, 'regional.locale'));
   fillSelect($('#f-tz'), zones, getPath(image, 'regional.timeZone'));
-  const mcs = config.mcs || savedMcs;
   fillSelect($('#m-memory'), sizeOptions(MEMORY_GB), getPath(mcs, 'machine.memoryMb'));
 
   for (const input of $$('[data-path]')) {
     const path = input.dataset.path;
     const source = path.startsWith('mcs.') && !config.mcs ? { mcs: savedMcs } : config;
     const value = getPath(source, path);
-    if (input.type === 'checkbox') {
-      input.checked = Boolean(value);
-    } else if (input.type === 'radio') {
+    if (input.type === 'radio') {
       input.checked = input.value === value;
     } else if (input.tagName !== 'SELECT') {
       input.value = value ?? '';
     }
   }
-  $('#mcs-enabled').checked = Boolean(config.mcs);
-  syncSliders();
+  $('#opt-yes').checked = Boolean(image.optimizer.enabled);
+  $('#opt-no').checked = !image.optimizer.enabled;
+  $('#mcs-yes').checked = Boolean(config.mcs);
+  $('#mcs-no').checked = !config.mcs;
   renderProfiles();
   renderApplications();
 }
 
-function syncSliders() {
-  for (const slider of $$('input[type="range"][data-mirror]')) {
-    const target = document.getElementById(slider.dataset.mirror);
-    slider.value = target.value;
-  }
-}
-
 function readInput(input) {
-  const type = input.dataset.type;
-  if (type === 'bool') {
-    return input.checked;
-  }
-  if (type === 'int') {
+  if (input.dataset.type === 'int') {
     if (input.value.trim() === '') {
       return null;
     }
@@ -177,18 +201,10 @@ function readInput(input) {
 }
 
 function bindForm() {
-  $('#builder').addEventListener('input', (event) => {
+  const form = $('#builder');
+  form.addEventListener('input', (event) => {
     const input = event.target;
-    if (input.matches('input[type="range"][data-mirror]')) {
-      const target = document.getElementById(input.dataset.mirror);
-      target.value = input.value;
-      target.dispatchEvent(new Event('input', { bubbles: true }));
-      return;
-    }
-    if (!input.dataset.path) {
-      return;
-    }
-    if (input.type === 'radio' && !input.checked) {
+    if (!input.dataset.path || (input.type === 'radio' && !input.checked)) {
       return;
     }
     const path = input.dataset.path;
@@ -196,30 +212,42 @@ function bindForm() {
       return;
     }
     setPath(config, path, readInput(input));
-    syncSliders();
     refresh();
   });
-  $('#builder').addEventListener('change', (event) => {
-    if (event.target.tagName === 'SELECT' || event.target.type === 'radio' || event.target.type === 'checkbox') {
+  form.addEventListener('change', (event) => {
+    if (event.target.tagName === 'SELECT' || event.target.type === 'radio') {
       event.target.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
-  $('#builder').addEventListener('submit', (event) => event.preventDefault());
-
-  $('#mcs-enabled').addEventListener('change', (event) => {
-    if (event.target.checked) {
-      config.mcs = structuredClone(savedMcs);
-    } else {
-      savedMcs = structuredClone(config.mcs);
-      config.mcs = null;
+  form.addEventListener('submit', (event) => event.preventDefault());
+  form.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && event.target.tagName === 'INPUT' && event.target.type !== 'checkbox') {
+      event.preventDefault();
+      next();
     }
-    populateForm();
-    refresh();
   });
 
+  for (const radio of $$('input[name="optimizer"]')) {
+    radio.addEventListener('change', () => {
+      config.image.optimizer.enabled = $('#opt-yes').checked;
+      refresh();
+    });
+  }
+  for (const radio of $$('input[name="mcs-enabled"]')) {
+    radio.addEventListener('change', () => {
+      if ($('#mcs-yes').checked && !config.mcs) {
+        config.mcs = structuredClone(savedMcs);
+      } else if ($('#mcs-no').checked && config.mcs) {
+        savedMcs = structuredClone(config.mcs);
+        config.mcs = null;
+      }
+      populateForm();
+      refresh();
+    });
+  }
+
   $('#ou-from-domain').addEventListener('click', () => {
-    const domain = config.mcs?.domain || '';
-    const parts = domain.split('.').filter(Boolean).map((part) => `DC=${part}`);
+    const parts = (config.mcs?.domain || '').split('.').filter(Boolean).map((part) => `DC=${part}`);
     if (!parts.length) {
       toast('Enter the domain first');
       return;
@@ -230,21 +258,15 @@ function bindForm() {
   });
 
   $('#app-search').addEventListener('input', renderApplications);
-  $('#apps-all').addEventListener('click', () => {
-    const base = new Set(baseIds().map((id) => id.toLowerCase()));
-    config.image.applications.include = reference.catalog.applications
-      .map((app) => app.id)
-      .filter((id) => !base.has(id.toLowerCase()));
-    config.image.applications.exclude = [];
-    renderApplications();
-    refresh();
-  });
   $('#apps-reset').addEventListener('click', () => {
     config.image.applications.include = [];
     config.image.applications.exclude = [];
     renderApplications();
     refresh();
   });
+
+  $('#back').addEventListener('click', () => go(current - 1));
+  $('#next').addEventListener('click', next);
 
   $('#load-example').addEventListener('click', () => {
     loadConfig(structuredClone(example));
@@ -258,30 +280,78 @@ function bindForm() {
     }
     try {
       loadConfig(JSON.parse(await file.text()));
-      toast(`${file.name} imported`);
+      STEPS.forEach((step) => { visited.add(step.id); checked.add(step.id); });
+      go(STEPS.length - 1);
+      toast(`${file.name} opened`);
     } catch (error) {
-      toast(`Could not import: ${error.message}`);
+      toast(`Could not open the file: ${error.message}`);
     }
   });
   $('#share').addEventListener('click', () => {
     const url = `${location.origin}${location.pathname}#config=${encodeConfig(config)}`;
     history.replaceState(null, '', url);
-    copy(url, 'Share link');
+    copy(url, 'Link');
   });
+}
 
-  for (const tab of $$('.tabs [data-tab]')) {
-    tab.addEventListener('click', () => {
-      activeTab = tab.dataset.tab;
-      $$('.tabs [data-tab]').forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
-      renderPanel(validateConfiguration(config, reference));
-    });
+// ---------------------------------------------------------------- navigation
+
+function go(index) {
+  if (index < 0 || index >= STEPS.length) {
+    return;
   }
+  current = index;
+  visited.add(STEPS[index].id);
+  for (const section of $$('.step')) {
+    section.hidden = section.dataset.step !== STEPS[index].id;
+  }
+  $('#step-error').textContent = '';
+  refresh();
+  const heading = $(`.step[data-step="${STEPS[index].id}"] h1`);
+  heading.setAttribute('tabindex', '-1');
+  heading.focus({ preventScroll: true });
+  window.scrollTo({ top: 0 });
+}
+
+function next() {
+  const step = STEPS[current];
+  if (step.id === 'summary') {
+    $('#files').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  checked.add(step.id);
+  const errors = errorsFor(step.id);
+  if (errors.length) {
+    refresh();
+    $('#step-error').textContent = `Fix ${plural(errors.length, 'problem')} on this page to continue.`;
+    const field = $(`.step[data-step="${step.id}"] .invalid input, .step[data-step="${step.id}"] .invalid select`);
+    field?.focus();
+    return;
+  }
+  go(current + 1);
+}
+
+function renderSteps(errors) {
+  $('#step-list').innerHTML = STEPS.map((step, index) => {
+    const bad = step.id !== 'summary' && checked.has(step.id) && errorsFor(step.id, errors).length > 0;
+    const done = !bad && index < current && !errorsFor(step.id, errors).length;
+    const mark = bad ? '!' : done ? '✓' : String(index + 1);
+    const state = bad ? 'invalid' : done ? 'done' : '';
+    return `<li><button type="button" class="${state}" data-go="${index}"${index === current ? ' aria-current="step"' : ''}>
+      <span class="mark" aria-hidden="true">${mark}</span><span>${escapeHtml(step.title)}</span></button></li>`;
+  }).join('');
+  for (const button of $$('[data-go]')) {
+    button.addEventListener('click', () => go(Number(button.dataset.go)));
+  }
+  $('#progress').textContent = `Step ${current + 1} of ${STEPS.length} · ${STEPS[current].title}`;
+  $('#back').disabled = current === 0;
+  $('#next').textContent = STEPS[current].id === 'summary' ? 'Get the files' : STEPS[current + 1].id === 'summary' ? 'Review' : 'Next';
 }
 
 // ------------------------------------------------------------- applications
 
 function baseIds() {
-  const profiles = (config.image?.applications?.profiles || []).filter((name) =>
+  const profiles = (config.image.applications.profiles || []).filter((name) =>
     reference.catalog.profiles.some((item) => item.name.toLowerCase() === String(name).toLowerCase()));
   try {
     return profileApplicationIds(reference.catalog, profiles);
@@ -300,13 +370,16 @@ function selectedIds() {
 }
 
 function renderProfiles() {
-  const selected = new Set((config.image?.applications?.profiles || []).map((name) => String(name).toLowerCase()));
+  const selected = new Set((config.image.applications.profiles || []).map((name) => String(name).toLowerCase()));
   $('#profiles').innerHTML = reference.catalog.profiles.map((item) => {
     const on = selected.has(item.name.toLowerCase());
     const parent = item.extends?.length ? ` Includes ${item.extends.join(', ')}.` : '';
-    return `<label class="chip${on ? ' selected' : ''}">
+    let count = 0;
+    try { count = profileApplicationIds(reference.catalog, [item.name]).length; } catch { /* unknown profile */ }
+    return `<label class="choice${on ? ' selected' : ''}">
       <input type="checkbox" data-profile="${escapeHtml(item.name)}"${on ? ' checked' : ''}>
-      <div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.description || '')}${escapeHtml(parent)}</span></div>
+      <span><strong>${escapeHtml(item.name[0].toUpperCase() + item.name.slice(1))}</strong>
+      <small>${escapeHtml(item.description || '')}${escapeHtml(parent)} ${plural(count, 'application')}.</small></span>
     </label>`;
   }).join('');
 
@@ -337,16 +410,15 @@ function renderApplications() {
   $('#app-list').innerHTML = apps.map((app) => {
     const key = app.id.toLowerCase();
     const on = selected.has(key);
-    let tag = '';
-    if (base.has(key) && on) tag = '<span class="tag profile">profile</span>';
-    else if (base.has(key)) tag = '<span class="tag removed">removed</span>';
-    else if (on) tag = '<span class="tag added">added</span>';
-    return `<label class="app">
+    let change = '';
+    if (base.has(key) && !on) change = 'removed';
+    else if (!base.has(key) && on) change = 'added';
+    return `<label class="app" title="${escapeHtml(app.id)}">
       <input type="checkbox" data-app="${escapeHtml(app.id)}"${on ? ' checked' : ''}>
-      <div class="meta"><div class="name">${escapeHtml(app.name)}</div><div class="id">${escapeHtml(app.id)}</div></div>
-      ${tag}
+      <span class="name">${escapeHtml(app.name)}</span>
+      ${change ? `<span class="changed">${change}</span>` : ''}
     </label>`;
-  }).join('') || '<p class="hint">No application matches the search.</p>';
+  }).join('') || '<p class="empty">No application matches the filter.</p>';
 
   for (const input of $$('[data-app]')) {
     input.addEventListener('change', () => toggleApplication(input.dataset.app, input.checked));
@@ -354,114 +426,157 @@ function renderApplications() {
   $('#apps-count').textContent = `${selected.size} of ${reference.catalog.applications.length} selected`;
 }
 
-function toggleApplication(id, checked) {
+function toggleApplication(id, on) {
   const apps = config.image.applications;
   const key = id.toLowerCase();
   const inBase = baseIds().some((item) => item.toLowerCase() === key);
   apps.include = apps.include.filter((item) => item.toLowerCase() !== key);
   apps.exclude = apps.exclude.filter((item) => item.toLowerCase() !== key);
-  if (inBase && !checked) apps.exclude.push(id);
-  if (!inBase && checked) apps.include.push(id);
+  if (inBase && !on) apps.exclude.push(id);
+  if (!inBase && on) apps.include.push(id);
   renderApplications();
   refresh();
 }
 
-// -------------------------------------------------------------------- output
+// ------------------------------------------------------------------ summary
 
 function planSteps() {
   const image = config.image;
   const apps = selectedIds();
   const names = Object.fromEntries(reference.catalog.applications.map((app) => [app.id.toLowerCase(), app.name]));
-  const zone = reference.timeZones.find((item) => item.id === image.regional.timeZone);
   const steps = [
-    {
-      where: 'Hyper-V host',
-      title: `Create build VM ${image.name}`,
-      detail: `Generation 2, Secure Boot, ${image.hardware.cpus} vCPU, ${gb(image.hardware.memoryMb)} RAM, ${gb(image.hardware.diskSizeMb)} disk on “${image.hardware.switchName}”.`,
-    },
-    {
-      where: 'Guest',
-      title: 'Unattended Windows 11 setup',
-      detail: `Edition index ${image.windowsImageIndex}; ${image.regional.uiLanguage} display language, ${image.regional.locale} locale; ${zone ? `(UTC${zone.utcOffset}) ` : ''}${image.regional.timeZone}.`,
-    },
-    {
-      where: 'Guest',
-      title: `Install ${apps.length} application${apps.length === 1 ? '' : 's'} with WinGet`,
-      detail: apps.length ? apps.map((id) => names[id.toLowerCase()] || id).join(', ') : 'No applications selected.',
-    },
-    {
-      where: 'Guest',
-      title: 'Citrix Optimizer',
-      detail: image.optimizer.enabled ? `Execute with template ${image.optimizer.template}.` : 'Skipped for this build.',
-      skipped: !image.optimizer.enabled,
-    },
-    {
-      where: 'Guest',
-      title: 'Seal and record the manifest',
-      detail: `Refuse to seal with a pending reboot; write version ${image.version} and the application list to C:\\ProgramData\\VdiImageFactory\\image-manifest.json; export the VHDX.`,
-    },
+    ['Hyper-V host', `Create the build VM ${image.name}: generation 2, Secure Boot, ${image.hardware.cpus} vCPU, ${gb(image.hardware.memoryMb)} memory, ${gb(image.hardware.diskSizeMb)} disk.`],
+    ['Build VM', `Install Windows 11 unattended from edition index ${image.windowsImageIndex}, in ${image.regional.uiLanguage} with the ${image.regional.timeZone} time zone.`],
+    ['Build VM', apps.length
+      ? `Install ${plural(apps.length, 'application')} with WinGet: ${apps.map((id) => names[id.toLowerCase()] || id).join(', ')}.`
+      : 'No applications to install.'],
+    ['Build VM', image.optimizer.enabled ? `Run Citrix Optimizer with the ${image.optimizer.template} template.` : 'Citrix Optimizer is skipped.', !image.optimizer.enabled],
+    ['Build VM', `Stop if a reboot is pending, write the manifest for version ${image.version}, seal, and export the VHDX.`],
   ];
   if (config.mcs) {
     const mcs = config.mcs;
     const range = machineNames(mcs.namingScheme, mcs.machineCount);
-    steps.push({
-      where: 'Citrix site (review first)',
-      title: `Create catalog “${mcs.catalogName}”`,
-      detail: `Identity pool ${range.first} … ${range.last} (${mcs.machineCount}) in ${mcs.organizationalUnit}; ${mcs.allocationType === 'Random' ? 'pooled, changes discarded' : 'assigned, changes kept'}; ${mcs.machine.cpus} vCPU and ${gb(mcs.machine.memoryMb)} per machine.`,
-    });
+    steps.push(['Citrix site, after your review', `Create the catalog ${mcs.catalogName} with ${plural(mcs.machineCount, 'machine')}, ${range.first} to ${range.last}, in ${mcs.organizationalUnit}.`]);
   }
   return steps;
 }
 
-function outputs() {
-  return {
-    json: `${JSON.stringify(config, null, 2)}\n`,
-    hcl: toPackerVariables(config),
-    mcs: config.mcs ? toMcsPlanScript(config) : '',
-    commands: toCommands(config),
-  };
+function summaryRows() {
+  const image = config.image;
+  const apps = selectedIds();
+  const zone = reference.timeZones.find((item) => item.id === image.regional.timeZone);
+  const locale = (id) => reference.locales.find((item) => item.id === id)?.name || id;
+  const rows = [
+    ['Image'],
+    ['Name', image.name],
+    ['Version', image.version],
+    ['Windows edition index', image.windowsImageIndex],
+    ['Installation media', image.isoUrl || 'Given to Packer at build time'],
+    ['Build VM'],
+    ['Size', `${image.hardware.cpus} vCPU, ${gb(image.hardware.memoryMb)} memory, ${gb(image.hardware.diskSizeMb)} disk`],
+    ['Virtual switch', image.hardware.switchName],
+    ['Language and region'],
+    ['Display language', locale(image.regional.uiLanguage)],
+    ['Formats and keyboard', locale(image.regional.locale)],
+    ['Time zone', zone ? `(UTC${zone.utcOffset}) ${zone.id}` : image.regional.timeZone],
+    ['Software'],
+    ['Profiles', (image.applications.profiles || []).join(', ') || 'None'],
+    ['Applications', plural(apps.length, 'application')],
+    ['Citrix Optimizer', image.optimizer.enabled ? `Yes, ${image.optimizer.template}` : 'No'],
+    ['Machine catalog'],
+  ];
+  if (config.mcs) {
+    const mcs = config.mcs;
+    let names = mcs.namingScheme;
+    try {
+      const range = machineNames(mcs.namingScheme, mcs.machineCount);
+      names = `${range.first} to ${range.last}`;
+    } catch { /* shown as the scheme */ }
+    rows.push(
+      ['Catalog', mcs.catalogName],
+      ['Desktops', mcs.allocationType === 'Random' ? 'Random, pooled' : 'Static, assigned'],
+      ['Machines', `${mcs.machineCount} × ${mcs.machine.cpus} vCPU, ${gb(mcs.machine.memoryMb)}`],
+      ['Computer accounts', names],
+      ['Domain and OU', `${mcs.domain}, ${mcs.organizationalUnit}`],
+      ['Hosting unit', mcs.hostingUnitName],
+    );
+  } else {
+    rows.push(['Catalog', 'Not planned. Create or update it in Studio.']);
+  }
+  return rows;
 }
 
-const FILES = {
-  json: ['build.json', 'application/json'],
-  hcl: ['build.auto.pkrvars.hcl', 'text/plain'],
-  mcs: ['mcs-catalog-plan.ps1', 'text/plain'],
-  commands: ['commands.ps1', 'text/plain'],
-};
+function fileList() {
+  const files = [
+    ['build.json', 'application/json', 'This configuration. Open it here again or pass it to New-VdiBuild.ps1.', `${JSON.stringify(config, null, 2)}\n`],
+    ['build.auto.pkrvars.hcl', 'text/plain', 'Packer variables for the Hyper-V build. No secrets.', toPackerVariables(config)],
+  ];
+  if (config.mcs) {
+    files.push(['mcs-catalog-plan.ps1', 'text/plain', 'Citrix PowerShell SDK plan for the catalog. Review it, then run it yourself.', toMcsPlanScript(config)]);
+  }
+  files.push(['commands.ps1', 'text/plain', 'The commands to run on the Hyper-V host, in order.', toCommands(config)]);
+  return files;
+}
 
-function renderPanel(errors) {
-  const panel = $('#panel');
-  if (activeTab === 'plan') {
-    if (errors.length) {
-      panel.innerHTML = '<p class="hint">Fix the highlighted fields to see the build plan.</p>';
-      return;
+function renderSummary(errors) {
+  const status = $('#status');
+  if (errors.length) {
+    status.className = 'status bad';
+    status.innerHTML = `${plural(errors.length, 'problem')} to fix before the files can be made
+      <ul>${errors.map((error) => {
+        const index = STEPS.findIndex((step) => step.id === stepOf(error.path));
+        return `<li><button type="button" class="link" data-go-fix="${index}">${escapeHtml(STEPS[index].title)}</button>: ${escapeHtml(error.message)}</li>`;
+      }).join('')}</ul>`;
+    for (const button of $$('[data-go-fix]')) {
+      button.addEventListener('click', () => go(Number(button.dataset.goFix)));
     }
-    panel.innerHTML = `<ol class="plan">${planSteps().map((step, index) => `
-      <li data-step="${index + 1}" class="${step.skipped ? 'skipped' : ''}">
-        <span class="where">${escapeHtml(step.where)}</span>
-        <strong>${escapeHtml(step.title)}</strong>
-        <div class="detail">${escapeHtml(step.detail)}</div>
-      </li>`).join('')}</ol>`;
+    $('#summary').innerHTML = '';
+    $('#plan').innerHTML = '';
+    $('#files').innerHTML = '<p class="note" style="padding:10px 12px;margin:0">The files are made once every step is valid.</p>';
     return;
   }
-  if (errors.length && activeTab !== 'json') {
-    panel.innerHTML = '<p class="hint">Files are generated once the configuration is valid.</p>';
-    return;
+  status.className = 'status ok';
+  status.textContent = 'Ready. The configuration passed validation.';
+
+  $('#summary').innerHTML = '<colgroup><col class="key"><col></colgroup>' + summaryRows().map(([label, value]) => (value === undefined
+    ? `<tr class="group"><th colspan="2">${escapeHtml(label)}</th></tr>`
+    : `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)).join('');
+
+  $('#plan').innerHTML = planSteps().map(([where, text, skipped]) =>
+    `<li class="${skipped ? 'skipped' : ''}"><span class="where">${escapeHtml(where)}</span><br>${escapeHtml(text)}</li>`).join('');
+
+  const files = fileList();
+  $('#files').innerHTML = files.map(([name, , description], index) => `
+    <div class="file">
+      <div class="file-head">
+        <div class="what"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(description)}</small></div>
+        <button type="button" data-view="${index}" aria-expanded="false">View</button>
+        <button type="button" data-copy="${index}">Copy</button>
+        <button type="button" class="primary" data-download="${index}">Download</button>
+      </div>
+      <pre hidden tabindex="0" id="file-${index}"></pre>
+    </div>`).join('');
+  for (const button of $$('[data-view]')) {
+    button.addEventListener('click', () => {
+      const [, , , content] = files[button.dataset.view];
+      const pre = $(`#file-${button.dataset.view}`);
+      pre.textContent = content;
+      pre.hidden = !pre.hidden;
+      button.textContent = pre.hidden ? 'View' : 'Hide';
+      button.setAttribute('aria-expanded', String(!pre.hidden));
+    });
   }
-  if (activeTab === 'mcs' && !config.mcs) {
-    panel.innerHTML = '<p class="hint">Enable “Plan a machine catalog” in section 6 to generate the Citrix SDK plan.</p>';
-    return;
+  for (const button of $$('[data-copy]')) {
+    const [name, , , content] = files[button.dataset.copy];
+    button.addEventListener('click', () => copy(content, name));
   }
-  const content = outputs()[activeTab];
-  const [name, type] = FILES[activeTab];
-  panel.innerHTML = `<div class="panel-actions">
-      <button type="button" id="copy-out">Copy</button>
-      <button type="button" class="primary" id="download-out">Download ${escapeHtml(name)}</button>
-    </div>
-    <pre class="code" tabindex="0">${escapeHtml(content)}</pre>`;
-  $('#copy-out').addEventListener('click', () => copy(content, name));
-  $('#download-out').addEventListener('click', () => download(name, content, type));
+  for (const button of $$('[data-download]')) {
+    const [name, type, , content] = files[button.dataset.download];
+    button.addEventListener('click', () => download(name, content, type));
+  }
 }
+
+// ------------------------------------------------------------------ refresh
 
 function renderErrors(errors) {
   const byPath = new Map();
@@ -470,70 +585,46 @@ function renderErrors(errors) {
     if (!byPath.has(path)) byPath.set(path, error.message);
   }
   for (const element of $$('[data-error-for]')) {
-    const message = byPath.get(element.dataset.errorFor);
+    const path = element.dataset.errorFor;
+    const message = checked.has(stepOf(path)) || edited.has(path) ? byPath.get(path) : undefined;
     element.textContent = message || '';
     element.closest('.field')?.classList.toggle('invalid', Boolean(message));
-    if (!element.closest('.field')) element.style.display = message ? 'block' : 'none';
   }
-
-  const status = $('#status');
-  status.className = `status ${errors.length ? 'bad' : 'ok'}`;
-  status.textContent = errors.length
-    ? `${errors.length} problem${errors.length === 1 ? '' : 's'} to fix before generating files`
-    : 'Configuration is valid';
-
-  $('#problems').innerHTML = errors.map((error) =>
-    `<li><button type="button" data-goto="${escapeHtml(error.path.replace(/\[\d+\]$/, ''))}">${escapeHtml(error.path)}: ${escapeHtml(error.message)}</button></li>`).join('');
-  for (const button of $$('[data-goto]')) {
-    button.addEventListener('click', () => {
-      const target = $(`[data-path="${button.dataset.goto}"]`) || $(`[data-error-for="${button.dataset.goto}"]`);
-      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      target?.focus?.({ preventScroll: true });
-    });
+  if (!errorsFor(STEPS[current].id, errors).length) {
+    $('#step-error').textContent = '';
   }
 }
 
-function renderSummary() {
-  const image = config.image;
-  const items = [
-    ['Image', `${image.name} ${image.version}`],
-    ['Build VM', `${image.hardware.cpus} vCPU · ${gb(image.hardware.memoryMb || 0)} · ${gb(image.hardware.diskSizeMb || 0)}`],
-    ['Applications', `${selectedIds().length}`],
-    ['Machines', config.mcs ? `${config.mcs.machineCount} × ${config.mcs.machine.cpus} vCPU / ${gb(config.mcs.machine.memoryMb || 0)}` : 'No catalog planned'],
-  ];
-  $('#summary').innerHTML = items.map(([label, value]) =>
-    `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('');
-}
-
-function renderMcsHelpers() {
-  $('#mcs-fields').style.opacity = config.mcs ? '1' : '0.5';
-  for (const input of $$('#mcs-fields input, #mcs-fields select, #mcs-fields button')) {
-    input.disabled = !config.mcs;
+function renderHelpers() {
+  $('#mcs-fields').hidden = !config.mcs;
+  $('#template-field').hidden = !config.image.optimizer.enabled;
+  for (const choice of $$('.choice')) {
+    choice.classList.toggle('selected', choice.querySelector('input').checked);
   }
   const mcs = config.mcs || savedMcs;
   const digits = namingSchemeDigits(mcs.namingScheme);
   const max = digits > 0 ? Math.min(LIMITS.machineCount.max, 10 ** digits - 1) : LIMITS.machineCount.max;
   $('#m-count').max = String(max);
-  $('input[data-mirror="m-count"]').max = String(Math.min(max, 200));
   if (digits > 0 && Number.isInteger(mcs.machineCount) && mcs.machineCount > 0) {
     const range = machineNames(mcs.namingScheme, Math.min(mcs.machineCount, max));
-    $('#names-preview').textContent = `${range.first} … ${range.last} (up to ${max} machines)`;
+    $('#names-preview').textContent = `Creates ${range.first} to ${range.last}. This scheme allows up to ${max} machines.`;
   } else {
-    $('#names-preview').textContent = 'Use # for the machine number, for example VDI-W11-###.';
+    $('#names-preview').textContent = 'Use # for the machine number, for example VDI-FIN-###.';
   }
   const domainPart = mcs.organizationalUnit ? domainFromOrganizationalUnit(mcs.organizationalUnit) : '';
-  $('#ou-from-domain').title = domainPart ? `Current OU is in ${domainPart}` : '';
-  for (const card of $$('.radio-card')) {
-    card.classList.toggle('selected', card.querySelector('input').checked);
-  }
+  $('#ou-from-domain').title = domainPart ? `The current OU is in ${domainPart}` : '';
 }
 
+const edited = new Set();
+
 function refresh() {
-  const errors = validateConfiguration(config, reference);
+  const errors = allErrors();
   renderErrors(errors);
-  renderSummary();
-  renderMcsHelpers();
-  renderPanel(errors);
+  renderSteps(errors);
+  renderHelpers();
+  if (STEPS[current].id === 'summary') {
+    renderSummary(errors);
+  }
   if (location.hash.startsWith('#config=')) {
     history.replaceState(null, '', `${location.pathname}#config=${encodeConfig(config)}`);
   }
@@ -543,6 +634,7 @@ function normalize(value) {
   const next = structuredClone(value);
   next.image ??= structuredClone(example.image);
   next.image.applications ??= { profiles: ['standard'], include: [], exclude: [] };
+  next.image.applications.profiles ??= [];
   next.image.applications.include ??= [];
   next.image.applications.exclude ??= [];
   next.image.hardware ??= structuredClone(example.image.hardware);
@@ -573,19 +665,22 @@ async function start() {
   reference = { catalog, locales: locales.locales, timeZones: zones.timeZones };
   example = sample;
   bindForm();
+  $('#builder').addEventListener('input', (event) => {
+    if (event.target.dataset.path) edited.add(event.target.dataset.path);
+  }, true);
 
   let initial = structuredClone(example);
   if (location.hash.startsWith('#config=')) {
     try {
       initial = decodeConfig(location.hash.slice('#config='.length));
     } catch {
-      toast('The share link could not be read; the example was loaded instead');
+      toast('The link could not be read; the example was loaded instead');
     }
   }
   loadConfig(initial);
+  go(0);
 }
 
 start().catch((error) => {
-  $('#status').className = 'status bad';
-  $('#status').textContent = `Could not load the catalog: ${error.message}`;
+  $('#step-error').textContent = `Could not load the application catalog: ${error.message}`;
 });

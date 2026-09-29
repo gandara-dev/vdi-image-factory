@@ -3,70 +3,77 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Image Builder | VDI Image Factory</title>
-  <meta name="description" content="Design a Citrix VDI golden image and MCS machine catalog, then download validated Packer variables and a reviewed Citrix SDK plan.">
+  <title>Create Golden Image | VDI Image Factory</title>
+  <meta name="description" content="A step-by-step wizard for a Windows 11 Citrix VDI golden image and its MCS machine catalog. It produces validated Packer variables and a Citrix SDK plan to review.">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="bar">
-    <a class="name" href="https://github.com/gandara-dev/vdi-image-factory">vdi-image-factory</a>
-    <span class="dim">image builder · build sheet for a Windows 11 golden image and its MCS catalog · runs in your browser</span>
+  <header class="topbar">
+    <a class="product" href="https://github.com/gandara-dev/vdi-image-factory">VDI Image Factory</a>
+    <span class="crumb">Create golden image</span>
     <span class="grow"></span>
-    <button type="button" id="load-example">load example</button>
-    <label class="button" for="import-file">import build.json</label>
+    <button type="button" id="load-example">Load example</button>
+    <label class="button" for="import-file">Open build.json</label>
     <input type="file" id="import-file" accept="application/json,.json" class="sr-only">
-    <button type="button" id="share">copy share link</button>
+    <button type="button" id="share">Copy link</button>
   </header>
 
-  <main>
-    <form id="builder" novalidate>
-      <section class="card" aria-labelledby="s-image">
-        <h2 id="s-image"><span class="step">1</span>Image</h2>
-        <p class="hint">Identity of the golden image and the installation media. The ISO stays on your Hyper-V host.</p>
-        <div class="grid">
-          <div class="field">
-            <label for="f-name">Image name</label>
-            <input id="f-name" type="text" data-path="image.name" autocomplete="off" spellcheck="false">
-            <span class="help">Used for the build VM and output folder.</span>
-            <span class="error" data-error-for="image.name"></span>
-          </div>
+  <main class="wizard">
+    <nav class="steps" aria-label="Wizard steps">
+      <ol id="step-list"></ol>
+    </nav>
+
+    <form class="page" id="builder" novalidate>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+
+      <!-- 1. Image -->
+      <section class="step" data-step="image" aria-labelledby="h-image">
+        <h1 id="h-image">Image</h1>
+        <p class="lead">Name and version the golden image and point to the Windows 11 installation media.</p>
+        <div class="field">
+          <label for="f-name">Image name</label>
+          <input id="f-name" type="text" data-path="image.name" autocomplete="off" spellcheck="false">
+          <span class="help">Used for the build VM and the output folder, for example vdi-win11-finance.</span>
+          <span class="error" data-error-for="image.name"></span>
+        </div>
+        <div class="row">
           <div class="field">
             <label for="f-version">Version</label>
             <input id="f-version" type="text" data-path="image.version" autocomplete="off" spellcheck="false">
-            <span class="help">Recorded in the image manifest, for example 2026.09.1.</span>
+            <span class="help">Written to the image manifest, for example 2026.09.1.</span>
             <span class="error" data-error-for="image.version"></span>
           </div>
           <div class="field">
             <label for="f-index">Windows edition index</label>
             <input id="f-index" type="number" min="1" max="32" data-path="image.windowsImageIndex" data-type="int">
-            <span class="help">Index inside install.wim. Confirm with <code>dism /Get-WimInfo</code>.</span>
+            <span class="help">Index inside install.wim. Check it with <code>dism /Get-WimInfo</code>.</span>
             <span class="error" data-error-for="image.windowsImageIndex"></span>
           </div>
         </div>
-        <div class="grid" style="margin-top:14px">
+        <fieldset>
+          <legend>Installation media <span class="optional">optional here</span></legend>
+          <p class="note">Leave these empty to pass them to Packer at build time. The ISO never leaves your Hyper-V host.</p>
           <div class="field">
-            <label for="f-iso">ISO path or URL <span class="help">(optional)</span></label>
+            <label for="f-iso">ISO path or URL</label>
             <input id="f-iso" type="text" data-path="image.isoUrl" placeholder="file:///C:/ISO/Windows11.iso" autocomplete="off" spellcheck="false">
             <span class="error" data-error-for="image.isoUrl"></span>
           </div>
           <div class="field">
-            <label for="f-checksum">ISO checksum <span class="help">(optional)</span></label>
+            <label for="f-checksum">ISO checksum</label>
             <input id="f-checksum" type="text" data-path="image.isoChecksum" placeholder="sha256:…" autocomplete="off" spellcheck="false">
             <span class="error" data-error-for="image.isoChecksum"></span>
           </div>
-        </div>
+        </fieldset>
       </section>
 
-      <section class="card" aria-labelledby="s-hardware">
-        <h2 id="s-hardware"><span class="step">2</span>Build VM resources</h2>
-        <p class="hint">Hyper-V generation 2 VM with Secure Boot used only while the image is built.</p>
-        <div class="grid">
+      <!-- 2. Build VM -->
+      <section class="step" data-step="vm" aria-labelledby="h-vm" hidden>
+        <h1 id="h-vm">Build VM</h1>
+        <p class="lead">The temporary Hyper-V VM that Packer creates to install Windows. It is deleted after the image is exported, so its size does not decide the size of your desktops.</p>
+        <div class="row">
           <div class="field">
             <label for="f-cpus">vCPUs</label>
-            <div class="slider-row">
-              <input type="range" min="2" max="16" step="1" data-mirror="f-cpus" aria-label="vCPU slider">
-              <input id="f-cpus" type="number" min="2" max="64" data-path="image.hardware.cpus" data-type="int">
-            </div>
+            <input id="f-cpus" type="number" min="2" max="64" data-path="image.hardware.cpus" data-type="int">
             <span class="error" data-error-for="image.hardware.cpus"></span>
           </div>
           <div class="field">
@@ -77,167 +84,188 @@
           <div class="field">
             <label for="f-disk">System disk</label>
             <select id="f-disk" data-path="image.hardware.diskSizeMb" data-type="int"></select>
+            <span class="help">The disk every desktop in the catalog gets.</span>
             <span class="error" data-error-for="image.hardware.diskSizeMb"></span>
           </div>
-          <div class="field">
-            <label for="f-switch">Hyper-V switch</label>
-            <input id="f-switch" type="text" data-path="image.hardware.switchName" autocomplete="off">
-            <span class="error" data-error-for="image.hardware.switchName"></span>
-          </div>
+        </div>
+        <div class="field">
+          <label for="f-switch">Hyper-V virtual switch</label>
+          <input id="f-switch" type="text" data-path="image.hardware.switchName" autocomplete="off">
+          <span class="help">Needs internet access for WinGet. Generation 2 with Secure Boot is always used.</span>
+          <span class="error" data-error-for="image.hardware.switchName"></span>
         </div>
       </section>
 
-      <section class="card" aria-labelledby="s-regional">
-        <h2 id="s-regional"><span class="step">3</span>Regional settings</h2>
-        <p class="hint">Applied by the unattended answer file. The display language must exist in your ISO.</p>
-        <div class="grid">
-          <div class="field">
-            <label for="f-ui">Display language</label>
-            <select id="f-ui" data-path="image.regional.uiLanguage"></select>
-            <span class="error" data-error-for="image.regional.uiLanguage"></span>
-          </div>
-          <div class="field">
-            <label for="f-locale">Locale and keyboard</label>
-            <select id="f-locale" data-path="image.regional.locale"></select>
-            <span class="error" data-error-for="image.regional.locale"></span>
-          </div>
-          <div class="field">
-            <label for="f-tz">Time zone</label>
-            <select id="f-tz" data-path="image.regional.timeZone"></select>
-            <span class="error" data-error-for="image.regional.timeZone"></span>
-          </div>
+      <!-- 3. Region -->
+      <section class="step" data-step="region" aria-labelledby="h-region" hidden>
+        <h1 id="h-region">Language and region</h1>
+        <p class="lead">Applied by the unattended answer file during Windows setup. The display language must exist in your ISO.</p>
+        <div class="field">
+          <label for="f-ui">Display language</label>
+          <select id="f-ui" data-path="image.regional.uiLanguage"></select>
+          <span class="error" data-error-for="image.regional.uiLanguage"></span>
+        </div>
+        <div class="field">
+          <label for="f-locale">Formats and keyboard</label>
+          <select id="f-locale" data-path="image.regional.locale"></select>
+          <span class="error" data-error-for="image.regional.locale"></span>
+        </div>
+        <div class="field">
+          <label for="f-tz">Time zone</label>
+          <select id="f-tz" data-path="image.regional.timeZone"></select>
+          <span class="error" data-error-for="image.regional.timeZone"></span>
         </div>
       </section>
 
-      <section class="card" aria-labelledby="s-apps">
-        <h2 id="s-apps"><span class="step">4</span>Applications</h2>
-        <p class="hint">Start from one or more profiles, then add or remove individual packages. Everything installs silently with WinGet in machine scope.</p>
-        <div class="chips" id="profiles" role="group" aria-label="Application profiles"></div>
-        <span class="error" data-error-for="image.applications.profiles" style="display:block;color:var(--error);font-size:12.5px"></span>
-        <div class="apps-toolbar">
-          <input type="search" id="app-search" placeholder="Search applications" aria-label="Search applications">
-          <button type="button" id="apps-all">Select all</button>
-          <button type="button" id="apps-reset">Profile defaults</button>
-          <span class="apps-count" id="apps-count" aria-live="polite"></span>
-        </div>
-        <div class="app-list" id="app-list"></div>
-      </section>
-
-      <section class="card" aria-labelledby="s-optimizer">
-        <h2 id="s-optimizer"><span class="step">5</span>Citrix Optimizer</h2>
-        <p class="hint">Runs only when the official Citrix Optimizer engine has been staged in the guest.</p>
-        <div class="grid">
-          <label class="switch"><input type="checkbox" id="f-opt" data-path="image.optimizer.enabled" data-type="bool"> Run Citrix Optimizer</label>
-          <div class="field">
-            <label for="f-template">Template</label>
-            <input id="f-template" type="text" data-path="image.optimizer.template" autocomplete="off">
-            <span class="error" data-error-for="image.optimizer.template"></span>
+      <!-- 4. Applications -->
+      <section class="step" data-step="apps" aria-labelledby="h-apps" hidden>
+        <h1 id="h-apps">Applications</h1>
+        <p class="lead">Pick a starting profile, then tick or untick single applications. Everything installs silently with WinGet for all users.</p>
+        <fieldset>
+          <legend>Start from a profile</legend>
+          <div class="options" id="profiles" role="group" aria-label="Application profiles"></div>
+          <span class="error" data-error-for="image.applications.profiles"></span>
+        </fieldset>
+        <fieldset class="apps">
+          <legend>Applications in the image <span class="count" id="apps-count" aria-live="polite"></span></legend>
+          <div class="apps-toolbar">
+            <input type="search" id="app-search" placeholder="Filter applications" aria-label="Filter applications">
+            <button type="button" id="apps-reset">Reset to profile</button>
           </div>
+          <div class="app-list" id="app-list"></div>
+          <span class="error" data-error-for="image.applications.include"></span>
+          <span class="error" data-error-for="image.applications.exclude"></span>
+        </fieldset>
+      </section>
+
+      <!-- 5. Optimizer -->
+      <section class="step" data-step="optimizer" aria-labelledby="h-optimizer" hidden>
+        <h1 id="h-optimizer">Citrix Optimizer</h1>
+        <p class="lead">Citrix Optimizer removes Windows features and services a pooled desktop does not need. The build runs it only if you staged the official engine in the guest.</p>
+        <div class="choices" role="radiogroup" aria-label="Citrix Optimizer">
+          <label class="choice"><input type="radio" name="optimizer" value="yes" id="opt-yes">
+            <span><strong>Run Citrix Optimizer</strong><small>Recommended for pooled desktops. Test the result before production.</small></span></label>
+          <label class="choice"><input type="radio" name="optimizer" value="no" id="opt-no">
+            <span><strong>Do not optimize</strong><small>Keep Windows as installed.</small></span></label>
+        </div>
+        <div class="field" id="template-field">
+          <label for="f-template">Template</label>
+          <input id="f-template" type="text" data-path="image.optimizer.template" autocomplete="off">
+          <span class="help">AutoSelect picks the template for the installed Windows build.</span>
+          <span class="error" data-error-for="image.optimizer.template"></span>
         </div>
       </section>
 
-      <section class="card" aria-labelledby="s-mcs">
-        <h2 id="s-mcs"><span class="step">6</span>MCS machine catalog</h2>
-        <p class="callout">
-          Machine names, domain, and OU are not baked into the golden image. Machine Creation Services
-          creates the computer accounts from this identity pool and applies them to every machine it provisions.
-        </p>
-        <label class="switch" style="margin-bottom:14px"><input type="checkbox" id="mcs-enabled"> Plan a machine catalog for this image</label>
+      <!-- 6. Machine catalog -->
+      <section class="step" data-step="catalog" aria-labelledby="h-catalog" hidden>
+        <h1 id="h-catalog">Machine catalog</h1>
+        <p class="lead">Machine Creation Services clones the image into desktops. Their names, domain, and OU come from here, not from the image.</p>
+        <div class="choices" role="radiogroup" aria-label="Machine catalog">
+          <label class="choice"><input type="radio" name="mcs-enabled" value="yes" id="mcs-yes">
+            <span><strong>Plan an MCS catalog</strong><small>Adds a Citrix SDK script for you to review and run.</small></span></label>
+          <label class="choice"><input type="radio" name="mcs-enabled" value="no" id="mcs-no">
+            <span><strong>Image only</strong><small>You create or update the catalog yourself in Studio.</small></span></label>
+        </div>
         <div id="mcs-fields">
-          <div class="grid">
+          <fieldset>
+            <legend>Catalog</legend>
             <div class="field">
               <label for="m-catalog">Catalog name</label>
               <input id="m-catalog" type="text" data-path="mcs.catalogName" autocomplete="off">
               <span class="error" data-error-for="mcs.catalogName"></span>
             </div>
-            <div class="field">
-              <label for="m-scheme">Provisioning scheme</label>
-              <input id="m-scheme" type="text" data-path="mcs.provisioningSchemeName" autocomplete="off">
-              <span class="error" data-error-for="mcs.provisioningSchemeName"></span>
+            <div class="row">
+              <div class="field">
+                <label for="m-scheme">Provisioning scheme</label>
+                <input id="m-scheme" type="text" data-path="mcs.provisioningSchemeName" autocomplete="off">
+                <span class="error" data-error-for="mcs.provisioningSchemeName"></span>
+              </div>
+              <div class="field">
+                <label for="m-hosting">Hosting unit</label>
+                <input id="m-hosting" type="text" data-path="mcs.hostingUnitName" autocomplete="off">
+                <span class="help">The name under XDHyp:\HostingUnits.</span>
+                <span class="error" data-error-for="mcs.hostingUnitName"></span>
+              </div>
             </div>
-            <div class="field">
-              <label for="m-hosting">Hosting unit</label>
-              <input id="m-hosting" type="text" data-path="mcs.hostingUnitName" autocomplete="off">
-              <span class="help">The resource name under XDHyp:\HostingUnits.</span>
-              <span class="error" data-error-for="mcs.hostingUnitName"></span>
+          </fieldset>
+          <fieldset>
+            <legend>Desktop experience</legend>
+            <div class="choices" role="radiogroup" aria-label="Desktop assignment">
+              <label class="choice"><input type="radio" name="allocation" value="Random" data-path="mcs.allocationType">
+                <span><strong>Random, pooled</strong><small>Users get any free desktop. Changes are discarded at logoff.</small></span></label>
+              <label class="choice"><input type="radio" name="allocation" value="Static" data-path="mcs.allocationType">
+                <span><strong>Static, assigned</strong><small>Each user keeps the same desktop. Changes are kept.</small></span></label>
             </div>
-          </div>
-          <div class="grid" style="margin-top:14px">
+            <span class="error" data-error-for="mcs.allocationType"></span>
+          </fieldset>
+          <fieldset>
+            <legend>Machines</legend>
+            <div class="row">
+              <div class="field">
+                <label for="m-count">Number of machines</label>
+                <input id="m-count" type="number" min="1" data-path="mcs.machineCount" data-type="int">
+                <span class="error" data-error-for="mcs.machineCount"></span>
+              </div>
+              <div class="field">
+                <label for="m-cpus">vCPUs per machine</label>
+                <input id="m-cpus" type="number" min="2" max="64" data-path="mcs.machine.cpus" data-type="int">
+                <span class="error" data-error-for="mcs.machine.cpus"></span>
+              </div>
+              <div class="field">
+                <label for="m-memory">Memory per machine</label>
+                <select id="m-memory" data-path="mcs.machine.memoryMb" data-type="int"></select>
+                <span class="error" data-error-for="mcs.machine.memoryMb"></span>
+              </div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Active Directory computer accounts</legend>
             <div class="field">
-              <label for="m-naming">Naming scheme</label>
+              <label for="m-naming">Account naming scheme</label>
               <input id="m-naming" type="text" data-path="mcs.namingScheme" autocomplete="off" spellcheck="false">
-              <span class="help names-preview" id="names-preview"></span>
+              <span class="help" id="names-preview"></span>
               <span class="error" data-error-for="mcs.namingScheme"></span>
             </div>
             <div class="field">
-              <label for="m-count">Machines</label>
-              <div class="slider-row">
-                <input type="range" min="1" max="200" step="1" data-mirror="m-count" aria-label="Machine count slider">
-                <input id="m-count" type="number" min="1" data-path="mcs.machineCount" data-type="int">
-              </div>
-              <span class="error" data-error-for="mcs.machineCount"></span>
-            </div>
-          </div>
-          <div class="grid" style="margin-top:14px">
-            <div class="field">
-              <label for="m-domain">Active Directory domain</label>
+              <label for="m-domain">Domain</label>
               <input id="m-domain" type="text" data-path="mcs.domain" autocomplete="off" spellcheck="false">
               <span class="error" data-error-for="mcs.domain"></span>
             </div>
             <div class="field">
               <label for="m-ou">Organizational unit</label>
               <input id="m-ou" type="text" data-path="mcs.organizationalUnit" autocomplete="off" spellcheck="false">
-              <span class="help"><button type="button" id="ou-from-domain" style="padding:2px 8px;font-size:12.5px">Use OU=VDI in this domain</button></span>
+              <span class="help"><button type="button" class="link" id="ou-from-domain">Use OU=VDI in this domain</button></span>
               <span class="error" data-error-for="mcs.organizationalUnit"></span>
             </div>
-          </div>
-          <div class="field" style="margin-top:14px">
-            <span style="font-weight:600;font-size:13.5px">Desktop assignment</span>
-            <div class="radio-cards" role="radiogroup" aria-label="Desktop assignment">
-              <label class="radio-card"><input type="radio" name="allocation" value="Random" data-path="mcs.allocationType">
-                <div><strong>Random (pooled)</strong><span>Any free machine per logon; changes are discarded at reboot.</span></div></label>
-              <label class="radio-card"><input type="radio" name="allocation" value="Static" data-path="mcs.allocationType">
-                <div><strong>Static (assigned)</strong><span>Each user keeps the same machine; changes persist on its disk.</span></div></label>
-            </div>
-            <span class="error" data-error-for="mcs.allocationType"></span>
-          </div>
-          <div class="grid" style="margin-top:14px">
-            <div class="field">
-              <label for="m-cpus">vCPUs per machine</label>
-              <input id="m-cpus" type="number" min="2" max="64" data-path="mcs.machine.cpus" data-type="int">
-              <span class="error" data-error-for="mcs.machine.cpus"></span>
-            </div>
-            <div class="field">
-              <label for="m-memory">Memory per machine</label>
-              <select id="m-memory" data-path="mcs.machine.memoryMb" data-type="int"></select>
-              <span class="error" data-error-for="mcs.machine.memoryMb"></span>
-            </div>
-          </div>
+          </fieldset>
         </div>
       </section>
-    </form>
 
-    <aside class="output card" aria-labelledby="s-output">
-      <h2 id="s-output">Output</h2>
-      <div id="status" class="status" role="status"></div>
-      <dl class="summary" id="summary"></dl>
-      <ul class="problems" id="problems"></ul>
-      <div class="tabs" role="tablist" aria-label="Generated output">
-        <button type="button" role="tab" data-tab="plan" aria-selected="true">Plan</button>
-        <button type="button" role="tab" data-tab="json" aria-selected="false">build.json</button>
-        <button type="button" role="tab" data-tab="hcl" aria-selected="false">Packer variables</button>
-        <button type="button" role="tab" data-tab="mcs" aria-selected="false">MCS plan</button>
-        <button type="button" role="tab" data-tab="commands" aria-selected="false">Commands</button>
-      </div>
-      <div id="panel" role="tabpanel"></div>
-    </aside>
+      <!-- 7. Summary -->
+      <section class="step" data-step="summary" aria-labelledby="h-summary" hidden>
+        <h1 id="h-summary">Summary</h1>
+        <div id="status" class="status" role="status"></div>
+        <table class="summary" id="summary"></table>
+        <h2>What the build does</h2>
+        <ol class="plan" id="plan"></ol>
+        <h2>Files</h2>
+        <p class="note">Save the files into the project folder and run the commands on your Hyper-V host. This page never contacts a hypervisor or a Citrix site.</p>
+        <div class="files" id="files"></div>
+      </section>
+
+      <footer class="actions">
+        <span class="step-error" id="step-error" role="alert"></span>
+        <span class="grow"></span>
+        <button type="button" id="back">Back</button>
+        <button type="button" class="primary" id="next">Next</button>
+      </footer>
+    </form>
   </main>
 
-  <footer>
-    Generated files are validated with the same rules as <code>Test-VdiBuildConfiguration</code>.
-    A real build still needs licensed media, a Hyper-V host, and the checks in the project's
+  <footer class="page-foot">
+    Validation uses the same rules as <code>Test-VdiBuildConfiguration</code>. A real build still needs licensed
+    media, a Hyper-V host, and the checks in the
     <a href="https://github.com/gandara-dev/vdi-image-factory/blob/main/docs/release-verification.md">release verification</a> guide.
-    The MCS plan is a reviewed script for a non-production Citrix site; this page never runs it.
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
