@@ -26,7 +26,7 @@
     PrivateData = @{
         PSData = @{
             Tags = @('Citrix', 'VDI', 'Packer', 'MCS', 'GoldenImage')
-            LicenseUri = 'https://opensource.org/license/mit'
+            LicenseUri = 'https://github.com/gandara-dev/vdi-image-factory/blob/main/LICENSE'
             ProjectUri = 'https://github.com/gandara-dev/vdi-image-factory'
         }
     }

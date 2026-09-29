@@ -1,7 +1,7 @@
 # VDI Image Factory
 
 [![CI](https://github.com/gandara-dev/vdi-image-factory/actions/workflows/ci.yml/badge.svg)](https://github.com/gandara-dev/vdi-image-factory/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/License-PolyForm%20Shield%201.0.0-lightgrey.svg)](LICENSE)
 
 Golden images drift when application installs, OS tuning, sealing, and catalog
 updates live in a runbook that only one person knows. VDI Image Factory turns
@@ -301,4 +301,7 @@ credentials.
 
 ## License
 
-[MIT](LICENSE)
+[PolyForm Shield 1.0.0](LICENSE). You may use, study, and modify this project,
+including inside your organization, but not to offer a product that competes
+with it. This is a source-available license, not an OSI-approved open-source
+license. Releases up to v0.4.0 were published under the MIT license.
