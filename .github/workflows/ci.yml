@@ -86,9 +86,15 @@ jobs:
           version: 1.16.1
       - name: Validate the vSphere template
         shell: pwsh
+        env:
+          # packer init looks up plugin releases on the GitHub API; without a
+          # token the shared runner IPs hit the anonymous rate limit.
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/Test-PackerTemplate.ps1
       - name: Validate a generated variable file
         shell: pwsh
+        env:
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./scripts/New-VdiBuild.ps1 -ConfigPath ./config/build.example.json -OutputDirectory ./build | Out-Null
           ./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
