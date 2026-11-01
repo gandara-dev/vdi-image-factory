@@ -44,6 +44,7 @@
         <RunSynchronousCommand wcm:action="add"><Order>3</Order><Path>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Set-Item WSMan:\localhost\Service\Auth\Basic -Value true"</Path></RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add"><Order>4</Order><Path>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Set-NetFirewallRule -Name WINRM-HTTP-In-TCP -RemoteAddress Any"</Path></RunSynchronousCommand>
         <RunSynchronousCommand wcm:action="add"><Order>5</Order><Path>reg.exe add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add"><Order>6</Order><Path>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$installer = Get-Volume | Where-Object DriveType -eq 'CD-ROM' | ForEach-Object { Join-Path ($_.DriveLetter + ':') 'setup64.exe' } | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $installer) { throw 'VMware Tools setup64.exe not found' }; Start-Process -FilePath $installer -ArgumentList '/S','/v','/qn REBOOT=R' -Wait"</Path></RunSynchronousCommand>
       </RunSynchronous>
     </component>
   </settings>

@@ -32,6 +32,6 @@ Windows VM or contacts a Citrix site. Pester covers default profiles, inheritanc
 per-build overrides, select-all behavior, invalid references, and inheritance
 cycles.
 
-A real acceptance test requires licensed installation media, Hyper-V, approved
-packages, and a non-production Citrix environment. Validate the VHDX, manifest,
+A real acceptance test requires licensed installation media, vCenter/ESXi, approved
+packages, and a non-production Citrix environment. Validate the golden VM, snapshot, manifest,
 canary registration, application launch, logon, profile behavior, and rollback.

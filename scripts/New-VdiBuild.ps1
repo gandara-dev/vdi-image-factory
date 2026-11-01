@@ -11,7 +11,7 @@ applies the same validation as the page, and writes:
   catalog, when the configuration has an mcs section. It is never executed.
 
 With -Simulation, it also runs the guest pipeline in simulation mode with the
-selected applications, so the plan can be reviewed without Hyper-V or Citrix.
+selected applications, so the plan can be reviewed without vCenter, ESXi, or Citrix.
 
 .EXAMPLE
 ./scripts/New-VdiBuild.ps1 -ConfigPath ./config/build.example.json -OutputDirectory ./build -Simulation

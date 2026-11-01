@@ -8,7 +8,7 @@ and creates an approval boundary between a sealed artifact and an MCS update.
 
 ## Pipeline stages
 
-1. Packer creates a generation-2 Hyper-V VM from a licensed Windows ISO.
+1. Packer connects to vCenter and creates a Windows 11 VM on the selected ESXi cluster from a licensed ISO.
 2. The guest workflow resolves one or more profiles from
    `config/application-catalog.json`, applies per-build include/exclude
    overrides, and installs the resulting packages.
@@ -18,12 +18,12 @@ and creates an approval boundary between a sealed artifact and an MCS update.
 6. An operator creates and validates a hypervisor snapshot.
 7. A separate management-host command requests asynchronous MCS publication.
 
-Simulation executes the orchestration contract without Hyper-V, an ISO, Citrix
+Simulation executes the orchestration contract without vCenter, ESXi, an ISO, Citrix
 SDK commands, or external infrastructure.
 
 ## Components
 
-- `packer/` owns VM creation, unattended setup, WinRM bootstrap, and VHDX output.
+- `packer/` owns vSphere VM creation, unattended setup, WinRM bootstrap, and the powered-off golden VM.
 - `config/application-catalog.json` defines the package library and composable
   `standard`, `developer`, and `application` profiles.
 - `src/VdiImageFactory/` contains catalog validation and testable pipeline stages.
@@ -33,8 +33,8 @@ SDK commands, or external infrastructure.
 
 ## Trust boundaries
 
-The Windows ISO, package source, Optimizer files, and application catalog are
-build inputs and must be reviewed. Temporary WinRM credentials exist only for
+The Windows ISO, package source, Optimizer files, application catalog, and vSphere
+placement are build inputs and must be reviewed. vCenter and temporary WinRM credentials exist only for
 the ephemeral build. Citrix administration occurs later on a trusted management
 host with an authenticated SDK session. Neither credentials nor customer data
 belong in the repository or image manifest.
@@ -50,6 +50,6 @@ and use their existing provisioning-scheme rollback procedure.
 
 ## Current limitations
 
-Version `0.3.1` does not run Windows Update, install a VDA, run Sysprep, create
+The current version does not run Windows Update, install a VDA, run Sysprep, create
 hypervisor snapshots, monitor asynchronous MCS tasks, or implement automatic
 rollback. Those environment-specific controls must remain explicit.

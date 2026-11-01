@@ -14,8 +14,8 @@ Every change must pass:
 - catalog tests for profiles, inheritance, overrides, select-all, missing IDs,
   invalid scopes, duplicate definitions, and inheritance cycles;
 - PSScriptAnalyzer and actionlint;
-- `packer init`, formatting, and validation with Packer 1.16.1 and Hyper-V
-  plugin 1.1.5;
+- `packer init`, formatting, and validation with Packer 1.16.1 and VMware
+  vSphere plugin 2.5.0;
 - Ansible syntax checking and `ansible-lint` with the pinned collection;
 - Mermaid rendering and JSON catalog parsing;
 - exact WinGet lookup with machine scope for every public catalog ID.
@@ -48,10 +48,12 @@ promotion, the operator must:
 
 1. Use an approved Windows ISO and verify its SHA-256 checksum.
 2. Confirm the image index and Windows licensing channel.
-3. Validate Hyper-V capacity, virtual switch access, Secure Boot, and WinRM.
+3. Validate vCenter permissions and key provider, ESXi and datastore capacity,
+   port-group access, the VMware Tools ISO path, the system disk controller,
+   UEFI Secure Boot, vTPM, and WinRM.
 4. Confirm WinGet availability inside the fresh guest before package install.
 5. Review package versions, licenses, silent-install behavior, and machine scope.
-6. Build the VHDX and boot it in an isolated network.
+6. Build the golden VM, snapshot it, and boot a clone in an isolated network.
 7. Validate every selected application, Windows Update state, VDA installation,
    Optimizer output, reboot state, profile behavior, and shutdown.
 8. Snapshot and publish only to a non-production MCS catalog first.

@@ -46,7 +46,7 @@ Add-DemoFrame 0.4 "${green}[planned]${reset} seal      image $($result.Seal.Imag
 Add-DemoFrame 0.4 "${green}[planned]${reset} publish   $($result.Publication.ProvisioningSchemeName)`r`n"
 Add-DemoFrame 0.3 "             ${dim}$($result.Publication.MasterImageVM)${reset}`r`n`r`n"
 Add-DemoFrame 0.6 "${cyan}Pipeline status:${reset} ${green}$($result.Status)${reset}`r`n"
-Add-DemoFrame 0.5 "${dim}Simulation contacted no Hyper-V host or Citrix site.${reset}`r`n"
+Add-DemoFrame 0.5 "${dim}Simulation contacted no vCenter, ESXi host, or Citrix site.${reset}`r`n"
 Add-DemoFrame 1.8 "${dim}Review -> build -> canary -> publish -> monitor${reset}`r`n"
 
 $outputDirectory = Split-Path -Parent $OutputPath

@@ -2,9 +2,9 @@ packer {
   required_version = ">= 1.16.1"
 
   required_plugins {
-    hyperv = {
-      source  = "github.com/hashicorp/hyperv"
-      version = "= 1.1.5"
+    vsphere = {
+      source  = "github.com/vmware/vsphere"
+      version = "= 2.5.0"
     }
   }
 }
@@ -34,6 +34,74 @@ variable "winrm_password" {
     )
     error_message = "The WinRM password must be at least 16 XML-safe characters and contain upper, lower, and numeric characters."
   }
+}
+
+variable "vsphere_server" {
+  type        = string
+  description = "vCenter Server FQDN or IP address."
+}
+
+variable "vsphere_username" {
+  type        = string
+  description = "Least-privilege vCenter service account."
+  sensitive   = true
+}
+
+variable "vsphere_password" {
+  type        = string
+  description = "Password for the vCenter service account."
+  sensitive   = true
+}
+
+variable "vsphere_insecure_connection" {
+  type        = bool
+  default     = false
+  description = "Disable vCenter TLS certificate verification. Use only for an explicitly trusted lab."
+}
+
+variable "vsphere_datacenter" {
+  type = string
+}
+
+variable "vsphere_cluster" {
+  type        = string
+  default     = null
+  description = "Optional cluster. Use with host when DRS cannot select one; omit for a standalone ESXi host."
+}
+
+variable "vsphere_host" {
+  type        = string
+  default     = null
+  description = "Optional ESXi host. Set it when DRS cannot select a host."
+}
+
+variable "vsphere_datastore" {
+  type = string
+}
+
+variable "vsphere_folder" {
+  type = string
+}
+
+variable "vsphere_network" {
+  type = string
+}
+
+variable "vsphere_disk_controller" {
+  type        = string
+  default     = "lsilogic-sas"
+  description = "System disk controller. Windows Setup has in-box drivers for LSI Logic SAS and NVMe; PVSCSI needs a WinPE driver this template does not inject."
+
+  validation {
+    condition     = contains(["lsilogic-sas", "nvme"], var.vsphere_disk_controller)
+    error_message = "Use lsilogic-sas or nvme. PVSCSI requires loading its driver in the windowsPE pass."
+  }
+}
+
+variable "vmware_tools_iso_path" {
+  type        = string
+  default     = "[] /vmimages/tools-isoimages/windows.iso"
+  description = "ESXi host path to the VMware Tools Windows ISO."
 }
 
 variable "windows_image_index" {
@@ -103,11 +171,6 @@ variable "exclude_applications" {
   description = "Exact WinGet IDs to remove after profile resolution."
 }
 
-variable "switch_name" {
-  type    = string
-  default = "Default Switch"
-}
-
 variable "cpus" {
   type    = number
   default = 4
@@ -139,28 +202,50 @@ variable "optimizer_template" {
   default = "AutoSelect"
 }
 
-source "hyperv-iso" "windows_11" {
-  vm_name              = var.image_name
-  output_directory     = "output-${var.image_name}"
-  iso_url              = var.iso_url
-  iso_checksum         = var.iso_checksum
-  generation           = 2
-  enable_secure_boot   = true
-  secure_boot_template = "MicrosoftWindows"
-  switch_name          = var.switch_name
-  cpus                 = var.cpus
-  memory               = var.memory_mb
-  disk_size            = var.disk_size_mb
-  headless             = true
-  communicator         = "winrm"
-  winrm_username       = "packer"
-  winrm_password       = var.winrm_password
-  winrm_timeout        = "4h"
-  shutdown_command     = "shutdown /s /t 10 /f /d p:4:1 /c \"Packer shutdown\""
-  shutdown_timeout     = "30m"
-  skip_compaction      = false
-  boot_wait            = "5s"
-  boot_command         = ["<spacebar>"]
+source "vsphere-iso" "windows_11" {
+  vcenter_server      = var.vsphere_server
+  username            = var.vsphere_username
+  password            = var.vsphere_password
+  insecure_connection = var.vsphere_insecure_connection
+
+  datacenter = var.vsphere_datacenter
+  cluster    = var.vsphere_cluster
+  host       = var.vsphere_host
+  datastore  = var.vsphere_datastore
+  folder     = var.vsphere_folder
+
+  vm_name             = var.image_name
+  convert_to_template = false
+  guest_os_type       = "windows11_64Guest"
+  firmware            = "efi-secure"
+  vTPM                = true
+  CPUs                = var.cpus
+  RAM                 = var.memory_mb
+
+  disk_controller_type = [var.vsphere_disk_controller]
+  storage {
+    disk_size             = var.disk_size_mb
+    disk_thin_provisioned = true
+  }
+
+  network_adapters {
+    network      = var.vsphere_network
+    network_card = "vmxnet3"
+  }
+
+  iso_url      = var.iso_url
+  iso_checksum = var.iso_checksum
+  iso_paths    = [var.vmware_tools_iso_path]
+  remove_cdrom = true
+
+  communicator     = "winrm"
+  winrm_username   = "packer"
+  winrm_password   = var.winrm_password
+  winrm_timeout    = "4h"
+  shutdown_command = "shutdown /s /t 10 /f /d p:4:1 /c \"Packer shutdown\""
+  shutdown_timeout = "30m"
+  boot_wait        = "5s"
+  boot_command     = ["<spacebar>"]
 
   cd_content = {
     "Autounattend.xml" = templatefile(
@@ -178,7 +263,7 @@ source "hyperv-iso" "windows_11" {
 
 build {
   name    = "vdi-image"
-  sources = ["source.hyperv-iso.windows_11"]
+  sources = ["source.vsphere-iso.windows_11"]
 
   provisioner "file" {
     source      = abspath("${path.root}/../src/VdiImageFactory")

@@ -124,6 +124,7 @@ function plural(count, word) {
 
 function stepOf(path) {
   if (path.startsWith('mcs')) return 'catalog';
+  if (path.startsWith('image.vsphere')) return 'vm';
   if (path.startsWith('image.hardware')) return 'vm';
   if (path.startsWith('image.regional')) return 'region';
   if (path.startsWith('image.applications')) return 'apps';
@@ -170,6 +171,7 @@ function populateForm() {
   fillSelect($('#f-locale'), locales, getPath(image, 'regional.locale'));
   fillSelect($('#f-tz'), zones, getPath(image, 'regional.timeZone'));
   fillSelect($('#m-memory'), sizeOptions(MEMORY_GB), getPath(mcs, 'machine.memoryMb'));
+  $('#f-insecure').value = String(getPath(image, 'vsphere.insecureConnection'));
 
   for (const input of $$('[data-path]')) {
     const path = input.dataset.path;
@@ -190,6 +192,9 @@ function populateForm() {
 }
 
 function readInput(input) {
+  if (input.dataset.type === 'bool') {
+    return input.value === 'true';
+  }
   if (input.dataset.type === 'int') {
     if (input.value.trim() === '') {
       return null;
@@ -445,13 +450,13 @@ function planSteps() {
   const apps = selectedIds();
   const names = Object.fromEntries(reference.catalog.applications.map((app) => [app.id.toLowerCase(), app.name]));
   const steps = [
-    ['Hyper-V host', `Create the build VM ${image.name}: generation 2, Secure Boot, ${image.hardware.cpus} vCPU, ${gb(image.hardware.memoryMb)} memory, ${gb(image.hardware.diskSizeMb)} disk.`],
+    ['vCenter / ESXi', `Create ${image.name} in ${image.vsphere.datacenter}/${image.vsphere.cluster || image.vsphere.host} on ${image.vsphere.datastore}: UEFI Secure Boot, vTPM, ${image.hardware.cpus} vCPU, ${gb(image.hardware.memoryMb)} memory, ${gb(image.hardware.diskSizeMb)} disk.`],
     ['Build VM', `Install Windows 11 unattended from edition index ${image.windowsImageIndex}, in ${image.regional.uiLanguage} with the ${image.regional.timeZone} time zone.`],
     ['Build VM', apps.length
       ? `Install ${plural(apps.length, 'application')} with WinGet: ${apps.map((id) => names[id.toLowerCase()] || id).join(', ')}.`
       : 'No applications to install.'],
     ['Build VM', image.optimizer.enabled ? `Run Citrix Optimizer with the ${image.optimizer.template} template.` : 'Citrix Optimizer is skipped.', !image.optimizer.enabled],
-    ['Build VM', `Stop if a reboot is pending, write the manifest for version ${image.version}, seal, and export the VHDX.`],
+    ['Build VM', `Stop if a reboot is pending, write the manifest for version ${image.version}, seal, and leave the powered-off golden VM ready for a reviewed snapshot.`],
   ];
   if (config.mcs) {
     const mcs = config.mcs;
@@ -474,7 +479,10 @@ function summaryRows() {
     ['Installation media', image.isoUrl || 'Given to Packer at build time'],
     ['Build VM'],
     ['Size', `${image.hardware.cpus} vCPU, ${gb(image.hardware.memoryMb)} memory, ${gb(image.hardware.diskSizeMb)} disk`],
-    ['Virtual switch', image.hardware.switchName],
+    ['vCenter', image.vsphere.vcenterServer],
+    ['Placement', `${image.vsphere.datacenter} / ${image.vsphere.cluster || 'standalone'}${image.vsphere.host ? ` / ${image.vsphere.host}` : ''}`],
+    ['Datastore and folder', `${image.vsphere.datastore} / ${image.vsphere.folder}`],
+    ['Port group', image.vsphere.network],
     ['Language and region'],
     ['Display language', locale(image.regional.uiLanguage)],
     ['Formats and keyboard', locale(image.regional.locale)],
@@ -509,12 +517,12 @@ function summaryRows() {
 function fileList() {
   const files = [
     ['build.json', 'application/json', 'This configuration. Open it here again or pass it to New-VdiBuild.ps1.', `${JSON.stringify(config, null, 2)}\n`],
-    ['build.auto.pkrvars.hcl', 'text/plain', 'Packer variables for the Hyper-V build. No secrets.', toPackerVariables(config)],
+    ['build.auto.pkrvars.hcl', 'text/plain', 'Packer variables for the vCenter/ESXi build. No secrets.', toPackerVariables(config)],
   ];
   if (config.mcs) {
     files.push(['mcs-catalog-plan.ps1', 'text/plain', 'Citrix PowerShell SDK plan for the catalog. Review it, then run it yourself.', toMcsPlanScript(config)]);
   }
-  files.push(['commands.ps1', 'text/plain', 'The commands to run on the Hyper-V host, in order.', toCommands(config)]);
+  files.push(['commands.ps1', 'text/plain', 'The commands to run from the Packer runner, in order.', toCommands(config)]);
   return files;
 }
 
@@ -638,6 +646,7 @@ function normalize(value) {
   next.image.applications.include ??= [];
   next.image.applications.exclude ??= [];
   next.image.hardware ??= structuredClone(example.image.hardware);
+  next.image.vsphere ??= structuredClone(example.image.vsphere);
   next.image.regional ??= structuredClone(example.image.regional);
   next.image.optimizer ??= structuredClone(example.image.optimizer);
   if (next.mcs === undefined) next.mcs = null;

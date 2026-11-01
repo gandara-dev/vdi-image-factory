@@ -8,7 +8,7 @@ configuration layers:
 | Layer | File or parameters | Purpose |
 |---|---|---|
 | Image composition | `config/application-catalog.json` plus `ApplicationProfile`, `IncludeApplication`, and `ExcludeApplication` | Select software for the target persona |
-| Hyper-V build | private copy of `packer/variables.pkrvars.example.hcl` | ISO, checksum, image index, VM sizing, virtual switch, temporary WinRM password, and profile overrides |
+| vSphere build | generated file or private copy of `packer/variables.pkrvars.example.hcl` | vCenter/ESXi placement, ISO, checksum, image index, VM sizing, temporary credentials, and profile overrides |
 | Citrix publication | `Publish-McsImage.ps1` parameters | Provisioning scheme, snapshot path, and optional Delivery Controller |
 
 The private Packer file must end in `.auto.pkrvars.hcl` to be loaded
@@ -25,9 +25,9 @@ host.
 - Confirm every package supports machine-wide installation and the target OS.
 - Define Microsoft 365 licensing, activation, update channel, and shared-computer
   activation through an approved Office Deployment Tool configuration.
-- Store ISO paths, WinRM passwords, inventories, and Citrix credentials outside
+- Store ISO paths, vCenter and WinRM passwords, inventories, and Citrix credentials outside
   the repository.
-- Validate available Hyper-V memory and disk capacity.
+- Validate ESXi compute capacity, datastore free space, port-group access, and vCenter permissions.
 
 Generate the variables from a reviewed `build.json` (designed in the Image
 Builder or written by hand), then validate them against the template before
@@ -40,18 +40,19 @@ so validation never needs real media.
 ```
 
 To build, pass the generated file, the ISO location and checksum, and the
-temporary password through `PKR_VAR_winrm_password`. If you prefer a
+temporary password through `PKR_VAR_winrm_password`, and vCenter credentials
+through `PKR_VAR_vsphere_username` and `PKR_VAR_vsphere_password`. If you prefer a
 hand-edited file, copy `packer/variables.pkrvars.example.hcl` to an ignored
 `packer/private.auto.pkrvars.hcl`. If validation reports a missing variable,
 confirm that the private filename ends exactly in `.auto.pkrvars.hcl`. If package installation reports that
 WinGet is unavailable, verify App Installer registration inside the fresh guest;
-installing WinGet only on the Hyper-V host does not satisfy the guest workflow.
+installing WinGet only on the Packer runner does not satisfy the guest workflow.
 
 ## Build and validation
 
 Run the pipeline first with `-Simulation`. For a real build, preserve Packer
-logs in an access-controlled location and treat the resulting VHDX and image
-manifest as release artifacts. Boot the image in an isolated network and test
+logs in an access-controlled location and treat the resulting powered-off golden VM,
+snapshot, and image manifest as release artifacts. Boot a clone in an isolated network and test
 applications, policy, VDA registration, logon, profile behavior, and shutdown.
 
 Citrix Optimizer should begin in `Analyze` mode. Any optimization template is a
@@ -59,7 +60,7 @@ versioned build input and requires regression testing against the OS, VDA, and
 application set.
 
 The public CI validates the template but cannot redistribute a licensed Windows
-ISO or build a production VHDX. Follow the environment acceptance checklist in
+ISO or build a production vSphere VM. Follow the environment acceptance checklist in
 [Release verification](release-verification.md) before promotion.
 
 Start from `standard`, `developer`, or the empty `application` profile. Use
@@ -82,7 +83,7 @@ the existing MCS rollback process can restore it if validation fails.
 
 ## Upgrade and recovery
 
-Pin and review Packer, its Hyper-V plugin, Ansible collections, package versions,
+Pin and review Packer, its VMware vSphere plugin, Ansible collections, package versions,
 and Optimizer inputs. Reproduce the build from a repository tag. On failure,
 discard the incomplete artifact; do not attempt to promote a partially sealed
 image.

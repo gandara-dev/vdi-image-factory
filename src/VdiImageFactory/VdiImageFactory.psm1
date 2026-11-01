@@ -538,13 +538,15 @@ $script:BuildLimits = @{
     DiskSizeMb = @{ Min = 65536; Max = 2097152; Step = 1024 }
     WindowsImageIndex = @{ Min = 1; Max = 32; Step = 0 }
     MachineCountMax = 1000
-    ComputerNameLength = 15
+    AdComputerNameLength = 15
+    CitrixObjectNameLength = 64
+    VsphereEntityNameLength = 79
 }
 
-$script:NamePattern = '^[A-Za-z0-9][A-Za-z0-9._-]{1,62}$'
+$script:NamePattern = '^[A-Za-z0-9][A-Za-z0-9._-]{1,78}$'
 $script:VersionPattern = '^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$'
 $script:ChecksumPattern = '^sha256:[A-Fa-f0-9]{64}$'
-$script:CitrixObjectNamePattern = '^[^\\/;:#.*?=<>|\[\]()"'']{1,64}$'
+$script:CitrixObjectNamePattern = '^[^\\/;:#.*?=<>|\[\]()"'']+$'
 $script:NamingSchemePattern = '^[A-Za-z0-9#][A-Za-z0-9#-]*$'
 $script:FqdnPattern = '^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$'
 $script:OuPattern = '(?i)^OU=[^,=]+(?:,OU=[^,=]+)*(?:,DC=[^,=]+)+$'
@@ -653,8 +655,8 @@ function Test-VdiBuildConfiguration {
         return $errors.ToArray()
     }
     $schemaVersion = Get-BuildProperty $Configuration 'schemaVersion'
-    if (-not (Test-WholeNumber $schemaVersion) -or $schemaVersion -ne 1) {
-        & $add 'schemaVersion' 'Only schemaVersion 1 is supported.'
+    if (-not (Test-WholeNumber $schemaVersion) -or $schemaVersion -ne 2) {
+        & $add 'schemaVersion' 'Only schemaVersion 2 is supported.'
     }
 
     $image = Get-BuildProperty $Configuration 'image'
@@ -662,11 +664,19 @@ function Test-VdiBuildConfiguration {
         & $add 'image' 'The image section is required.'
     }
     else {
-        if (-not (Test-BuildMatch (Get-BuildProperty $image 'name') $script:NamePattern)) {
-            & $add 'image.name' 'Use 2-63 letters, digits, dots, hyphens, or underscores, starting with a letter or digit.'
+        $imageName = Get-BuildProperty $image 'name'
+        $imageVersion = Get-BuildProperty $image 'version'
+        $imageNameValid = Test-BuildMatch $imageName $script:NamePattern
+        $imageVersionValid = Test-BuildMatch $imageVersion $script:VersionPattern
+        if (-not $imageNameValid) {
+            & $add 'image.name' 'Use 2-79 letters, digits, dots, hyphens, or underscores, starting with a letter or digit (the vCenter entity-name limit is 79).'
         }
-        if (-not (Test-BuildMatch (Get-BuildProperty $image 'version') $script:VersionPattern)) {
+        if (-not $imageVersionValid) {
             & $add 'image.version' 'Use 1-32 letters, digits, dots, hyphens, or underscores.'
+        }
+        if ($imageNameValid -and $imageVersionValid -and
+            "$imageName-$imageVersion".Length -gt $script:BuildLimits.VsphereEntityNameLength) {
+            & $add 'image.name' "The derived snapshot name ($imageName-$imageVersion) exceeds vCenter's $($script:BuildLimits.VsphereEntityNameLength)-character limit."
         }
         $limit = $script:BuildLimits.WindowsImageIndex
         Add-RangeError $errors 'image.windowsImageIndex' (Get-BuildProperty $image 'windowsImageIndex') $limit.Min $limit.Max
@@ -677,6 +687,43 @@ function Test-VdiBuildConfiguration {
         if ((Test-BuildProperty $image 'isoChecksum') -and -not ($checksum -is [string] -and $checksum -eq '') -and
             -not (Test-BuildMatch $checksum $script:ChecksumPattern)) {
             & $add 'image.isoChecksum' 'Use sha256: followed by 64 hexadecimal characters.'
+        }
+
+        $vsphere = Get-BuildProperty $image 'vsphere'
+        if (-not (Test-BuildObject $vsphere)) {
+            & $add 'image.vsphere' 'The vSphere placement section is required.'
+        }
+        else {
+            $vcenterServer = Get-BuildProperty $vsphere 'vcenterServer'
+            if (-not ($vcenterServer -is [string]) -or
+                (-not (Test-BuildMatch $vcenterServer $script:FqdnPattern) -and
+                    -not [regex]::IsMatch($vcenterServer, '^(?:\d{1,3}\.){3}\d{1,3}$'))) {
+                & $add 'image.vsphere.vcenterServer' 'Enter the vCenter FQDN or IP address.'
+            }
+            foreach ($field in @('datacenter', 'datastore', 'folder', 'network')) {
+                $value = Get-BuildProperty $vsphere $field
+                if ((Test-BlankValue $value) -or $value.Length -gt $script:BuildLimits.VsphereEntityNameLength) {
+                    & $add "image.vsphere.$field" "Enter a vCenter inventory name from 1 to $($script:BuildLimits.VsphereEntityNameLength) characters."
+                }
+            }
+            $clusterName = Get-BuildProperty $vsphere 'cluster'
+            $hostName = Get-BuildProperty $vsphere 'host'
+            if ((Test-BlankValue $clusterName) -and (Test-BlankValue $hostName)) {
+                & $add 'image.vsphere.cluster' 'Enter a cluster, an ESXi host, or both when the cluster does not use DRS.'
+            }
+            elseif ($null -ne $clusterName -and $clusterName -ne '' -and
+                (-not ($clusterName -is [string]) -or (Test-BlankValue $clusterName) -or
+                    $clusterName.Trim() -cne $clusterName -or $clusterName.Length -gt $script:BuildLimits.VsphereEntityNameLength)) {
+                & $add 'image.vsphere.cluster' "The optional cluster name cannot exceed $($script:BuildLimits.VsphereEntityNameLength) characters."
+            }
+            if ($null -ne $hostName -and $hostName -ne '' -and
+                (-not ($hostName -is [string]) -or (Test-BlankValue $hostName) -or
+                    $hostName.Trim() -cne $hostName -or $hostName.Length -gt $script:BuildLimits.VsphereEntityNameLength)) {
+                & $add 'image.vsphere.host' "The optional ESXi host name cannot exceed $($script:BuildLimits.VsphereEntityNameLength) characters."
+            }
+            if (-not ((Get-BuildProperty $vsphere 'insecureConnection') -is [bool])) {
+                & $add 'image.vsphere.insecureConnection' 'Must be true or false. Keep false when vCenter has a trusted certificate.'
+            }
         }
 
         $hardware = Get-BuildProperty $image 'hardware'
@@ -690,10 +737,6 @@ function Test-VdiBuildConfiguration {
                     @('diskSizeMb', 'DiskSizeMb'))) {
                 $limit = $script:BuildLimits[$item[1]]
                 Add-RangeError $errors "image.hardware.$($item[0])" (Get-BuildProperty $hardware $item[0]) $limit.Min $limit.Max $limit.Step
-            }
-            $switchName = Get-BuildProperty $hardware 'switchName'
-            if ((Test-BlankValue $switchName) -or $switchName.Length -gt 64) {
-                & $add 'image.hardware.switchName' 'Enter the Hyper-V virtual switch name (up to 64 characters).'
             }
         }
 
@@ -770,6 +813,7 @@ function Test-VdiBuildConfiguration {
             foreach ($field in @('catalogName', 'provisioningSchemeName')) {
                 $value = Get-BuildProperty $mcs $field
                 if (-not ($value -is [string]) -or $value.Trim() -cne $value -or
+                    $value.Length -gt $script:BuildLimits.CitrixObjectNameLength -or
                     -not [regex]::IsMatch($value, $script:CitrixObjectNamePattern)) {
                     & $add "mcs.$field" 'Use 1-64 characters without \ / ; : # . * ? = < > | [ ] ( ) quotes or edge spaces.'
                 }
@@ -786,8 +830,8 @@ function Test-VdiBuildConfiguration {
                 -not [regex]::IsMatch($scheme, '[A-Za-z]')) {
                 & $add 'mcs.namingScheme' 'Use letters, digits, and hyphens with exactly one run of # (for example VDI-W11-###).'
             }
-            elseif ($scheme.Length -gt $script:BuildLimits.ComputerNameLength) {
-                & $add 'mcs.namingScheme' "Computer names cannot exceed $($script:BuildLimits.ComputerNameLength) characters."
+            elseif ($scheme.Length -gt $script:BuildLimits.AdComputerNameLength) {
+                & $add 'mcs.namingScheme' "The complete machine name, including digits, cannot exceed the Active Directory limit of $($script:BuildLimits.AdComputerNameLength) characters (and therefore remains below vCenter's 79-character limit)."
             }
             else {
                 $digits = Get-VdiNamingSchemeDigit $scheme
@@ -872,11 +916,24 @@ function ConvertTo-VdiPackerVariable {
     }
     $entries.Add(@('image_name', (ConvertTo-HclString $image.name)))
     $entries.Add(@('image_version', (ConvertTo-HclString $image.version)))
+    $entries.Add(@('vsphere_server', (ConvertTo-HclString $image.vsphere.vcenterServer)))
+    $entries.Add(@('vsphere_datacenter', (ConvertTo-HclString $image.vsphere.datacenter)))
+    if (-not [string]::IsNullOrEmpty((Get-BuildProperty $image.vsphere 'cluster'))) {
+        $entries.Add(@('vsphere_cluster', (ConvertTo-HclString $image.vsphere.cluster)))
+    }
+    if (-not [string]::IsNullOrEmpty((Get-BuildProperty $image.vsphere 'host'))) {
+        $entries.Add(@('vsphere_host', (ConvertTo-HclString $image.vsphere.host)))
+    }
+    $entries.Add(@('vsphere_datastore', (ConvertTo-HclString $image.vsphere.datastore)))
+    $entries.Add(@('vsphere_folder', (ConvertTo-HclString $image.vsphere.folder)))
+    $entries.Add(@('vsphere_network', (ConvertTo-HclString $image.vsphere.network)))
+    $insecureConnection = 'false'
+    if ($image.vsphere.insecureConnection) { $insecureConnection = 'true' }
+    $entries.Add(@('vsphere_insecure_connection', $insecureConnection))
     $entries.Add(@('windows_image_index', [string]$image.windowsImageIndex))
     $entries.Add(@('cpus', [string]$image.hardware.cpus))
     $entries.Add(@('memory_mb', [string]$image.hardware.memoryMb))
     $entries.Add(@('disk_size_mb', [string]$image.hardware.diskSizeMb))
-    $entries.Add(@('switch_name', (ConvertTo-HclString $image.hardware.switchName)))
     $entries.Add(@('ui_language', (ConvertTo-HclString $image.regional.uiLanguage)))
     $entries.Add(@('locale', (ConvertTo-HclString $image.regional.locale)))
     $entries.Add(@('time_zone', (ConvertTo-HclString $image.regional.timeZone)))
@@ -891,8 +948,8 @@ function ConvertTo-VdiPackerVariable {
     $width = ($entries | ForEach-Object { $_[0].Length } | Measure-Object -Maximum).Maximum
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add('# Generated by the VDI Image Factory Image Builder. This file contains no secrets.')
-    $lines.Add('# Supply the temporary WinRM password separately, for example through')
-    $lines.Add('# the PKR_VAR_winrm_password environment variable.')
+    $lines.Add('# Supply vCenter credentials and the temporary WinRM password separately through')
+    $lines.Add('# PKR_VAR_vsphere_username, PKR_VAR_vsphere_password, and PKR_VAR_winrm_password.')
     foreach ($entry in $entries) {
         $lines.Add($entry[0].PadRight($width) + ' = ' + $entry[1])
     }

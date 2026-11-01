@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file. The
 format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.5.0] - 2026-11-01
+
+### Breaking
+
+- `build.json` files with `schemaVersion` 1 (Hyper-V switch and paths) are
+  rejected. Move them to schema 2 with the vCenter fields shown in
+  `config/build.example.json`.
+
+### Changed
+
+- Replaced the Hyper-V build with Packer's VMware vSphere builder. Builds now
+  run through vCenter on ESXi with explicit datacenter, cluster, optional host,
+  datastore, VM folder, port group, UEFI Secure Boot, and vTPM settings.
+- Build configuration schema version 2 keeps vCenter and WinRM credentials out
+  of generated files and supplies them through `PKR_VAR_*` environment variables.
+- Enforced the effective platform naming limits in both the page and PowerShell:
+  15 characters for complete AD/MCS machine names, 64 for Citrix catalog and
+  provisioning object names, and 79 for vCenter entity names.
+- The system disk controller is the `vsphere_disk_controller` variable, LSI
+  Logic SAS by default or NVMe. PVSCSI is rejected because Windows Setup has no
+  in-box PVSCSI driver and the answer file does not load one.
+
 ## [0.4.2] - 2026-09-29
 
 ### Added

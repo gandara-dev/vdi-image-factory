@@ -7,7 +7,7 @@ BeforeAll {
 
 Describe 'Module contract' {
     It 'publishes the documented module version' {
-        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.4.2'
+        (Test-ModuleManifest $ModulePath).Version | Should -Be '0.5.0'
     }
 }
 
@@ -330,9 +330,9 @@ Describe 'Build configuration (shared fixtures with the Image Builder page)' {
     }
 
     It 'escapes HCL template sequences and quotes' {
-        $configuration = Get-PatchedConfiguration ([pscustomobject]@{ 'image.hardware.switchName' = 'Lab "A" \ ${x}' })
+        $configuration = Get-PatchedConfiguration ([pscustomobject]@{ 'image.vsphere.network' = 'Lab "A" \ ${x}' })
         ConvertTo-VdiPackerVariable -Configuration $configuration |
-            Should -Match 'switch_name\s+= "Lab \\"A\\" \\\\ \$\$\{x\}"'
+            Should -Match 'vsphere_network\s+= "Lab \\"A\\" \\\\ \$\$\{x\}"'
     }
 
     It 'names the first and last machines from the naming scheme' {

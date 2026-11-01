@@ -84,7 +84,7 @@ jobs:
       - uses: hashicorp/setup-packer@v3.4.0
         with:
           version: 1.16.1
-      - name: Validate the Hyper-V template
+      - name: Validate the vSphere template
         shell: pwsh
         run: ./scripts/Test-PackerTemplate.ps1
       - name: Validate a generated variable file

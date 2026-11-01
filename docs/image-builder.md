@@ -15,7 +15,7 @@ PowerShell 7.
 
 The page works entirely in the browser. It reads the public catalog and
 reference files, validates what you enter, and generates files for download. It
-does not build images, contact Hyper-V or Citrix, or send data anywhere. Every
+does not build images, contact vCenter, ESXi, or Citrix, or send data anywhere. Every
 default value is synthetic.
 
 ## The wizard
@@ -32,7 +32,7 @@ jumps to the summary; **Copy link** puts the configuration in a shareable URL.
 | Step | Settings | Where it is applied |
 |---|---|---|
 | Image | Name, version, Windows edition index, optional ISO location and SHA-256 checksum | Packer variables |
-| Build VM | vCPUs, memory, system disk, Hyper-V switch | Packer (generation 2, Secure Boot) |
+| Build VM | vCPUs, memory, system disk, vCenter, datacenter, cluster, optional ESXi host, datastore, folder, port group, certificate policy | Packer `vsphere-iso` (UEFI Secure Boot and vTPM) |
 | Language and region | Display language, locale and keyboard, Windows time zone | Unattended answer file |
 | Applications | One or more profiles plus per-package additions and removals | `Install-VdiApplication` in the guest |
 | Citrix Optimizer | Enabled or skipped, template | Guest customization |
@@ -52,7 +52,7 @@ catalog plan uses the naming scheme, domain, and OU.
 | File | Contents |
 |---|---|
 | `build.json` | The complete configuration. Open it again in the page, or pass it to `New-VdiBuild.ps1`. |
-| `build.auto.pkrvars.hcl` | Packer variables for the image. It never contains the WinRM password. |
+| `build.auto.pkrvars.hcl` | Packer variables for the image. It never contains vCenter or WinRM credentials. |
 | `mcs-catalog-plan.ps1` | Citrix SDK commands that create the identity pool, provisioning scheme, broker catalog, AD accounts, and VMs, then register the machines. |
 | `commands.ps1` | The commands to validate, simulate, and build from the downloaded files. |
 
@@ -69,6 +69,8 @@ actually take of the imported master VM.
 ./scripts/New-VdiBuild.ps1 -ConfigPath ./build.json -OutputDirectory ./build -Simulation
 ./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
 $env:PKR_VAR_winrm_password = '<temporary password, 16+ characters>'
+$env:PKR_VAR_vsphere_username = '<vCenter service account>'
+$env:PKR_VAR_vsphere_password = '<vCenter password>'
 packer build -var-file ./build/build.auto.pkrvars.hcl `
     -var 'iso_url=file:///C:/ISO/Windows11.iso' `
     -var 'iso_checksum=sha256:<ISO checksum>' `
@@ -86,19 +88,21 @@ The same rules are implemented in `site/lib/image-builder.js` and in
 
 | Field | Rule |
 |---|---|
-| Image name | 2-63 letters, digits, dots, hyphens, or underscores, starting with a letter or digit |
+| Image name | 2-79 letters, digits, dots, hyphens, or underscores, starting with a letter or digit; both the VM name and derived `name-version` snapshot name must fit vCenter's 79-character limit |
 | Version | 1-32 letters, digits, dots, hyphens, or underscores |
 | Edition index | Whole number from 1 to 32 |
 | ISO checksum | Empty, or `sha256:` followed by 64 hexadecimal characters |
 | vCPUs | 2 to 64 |
 | Memory | 4096 to 262144 MB, in 1024 MB steps (Windows 11 needs at least 4 GB) |
 | System disk | 65536 to 2097152 MB, in 1024 MB steps (Windows 11 needs at least 64 GB) |
+| vCenter | FQDN or IPv4 address; credentials are supplied only at runtime |
+| vSphere placement | Datacenter, datastore, folder, and network are required and limited to 79 characters; enter a cluster, an ESXi host, or both for a non-DRS cluster |
 | Language, locale | One of the entries in `config/windows-locales.json` |
 | Time zone | One of the Windows IDs in `config/windows-time-zones.json` |
 | Profiles | At least one, each defined in the catalog (case-insensitive) |
 | Included and excluded IDs | Catalog IDs or `*` |
 | Catalog and scheme names | 1-64 characters, no `\ / ; : # . * ? = < > \| [ ] ( )` or quotes, no edge spaces |
-| Naming scheme | Letters, digits, and hyphens with exactly one run of `#`, at least one letter, not starting with a hyphen, and at most 15 characters |
+| Naming scheme | Letters, digits, and hyphens with exactly one run of `#`, at least one letter, not starting with a hyphen, and at most 15 characters including the generated digits (the AD/NetBIOS limit; also safely below vCenter's 79-character entity limit) |
 | Machines | 1 to 1000, and no more than the `#` run can number (99 for `##`) |
 | Domain | Fully qualified domain name |
 | OU | Distinguished name made of `OU=` and `DC=` parts whose `DC=` parts match the domain |
@@ -122,6 +126,6 @@ both implementations in the same pull request.
 ## Limits
 
 A valid configuration is not a tested image. A real build still needs licensed
-installation media that includes the chosen display language, a Hyper-V host
-with enough resources, approved package sources, and the operator checks in
+installation media that includes the chosen display language, vCenter and ESXi
+capacity, approved package sources, and the operator checks in
 [Release verification](release-verification.md).
