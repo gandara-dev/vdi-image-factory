@@ -5,7 +5,7 @@
 
 Golden images drift when application installs, OS tuning, sealing, and catalog
 updates live in a runbook that only one person knows. VDI Image Factory turns
-that sequence into reviewed code: Packer creates a Hyper-V artifact,
+that sequence into reviewed code: Packer creates a golden VM on ESXi through vCenter,
 PowerShell performs Windows customization, Ansible offers remote orchestration,
 and a separate command publishes the resulting snapshot through Citrix MCS.
 
@@ -25,8 +25,6 @@ account is needed; the codespace uses your own free Codespaces quota.
 **[Open the Image Builder](https://gandara-dev.github.io/vdi-image-factory/)**:
 a step-by-step wizard, like the Studio catalog wizard, for a golden image and
 its MCS machine catalog. It runs in the browser with no installation.
-
-![Image Builder](docs/image-builder.jpg)
 
 - Pick the build VM resources, Windows edition, display language, locale, and
   time zone.
@@ -54,7 +52,7 @@ or approve the snapshot before changing a production provisioning scheme.
 ## Two-minute quick start
 
 Windows PowerShell 5.1 or PowerShell 7 is the only requirement for simulation.
-No Hyper-V host, Windows ISO, Citrix site, or SDK is contacted.
+No vCenter, ESXi host, Windows ISO, Citrix site, or SDK is contacted.
 
 ```powershell
 git clone https://github.com/gandara-dev/vdi-image-factory.git
@@ -77,7 +75,7 @@ downloaded from the Image Builder), simulate it, and write the build files:
 
 | Path | Purpose |
 |---|---|
-| `packer/` | Windows 11 generation-2 Hyper-V template and unattended setup |
+| `packer/` | Windows 11 vSphere template and unattended setup |
 | `src/VdiImageFactory/` | Testable PowerShell module containing every stage |
 | `site/` | Image Builder page; `site/lib/` holds the shared build logic |
 | `config/application-catalog.json` | Application library and composable image profiles |
@@ -87,14 +85,21 @@ downloaded from the Image Builder), simulate it, and write the build files:
 | `scripts/` | Operator entry points for simulation and MCS publication |
 | `tests/` | Infrastructure-free Pester and Node tests with shared fixtures |
 
-## Build a Hyper-V image
+## Build a vSphere image
 
 Requirements:
 
-- Windows 11 Pro or Enterprise with Hyper-V enabled;
+- vCenter with an ESXi cluster, datastore, VM folder, and build port group;
+- a configured vCenter key provider for the Windows 11 vTPM;
+- a least-privilege vCenter service account and network reachability from the Packer runner to vCenter and the guest;
 - [Packer 1.16.1](https://developer.hashicorp.com/packer/install);
 - a properly licensed Windows 11 ISO and its SHA-256 checksum;
-- enough local disk and memory for the VM.
+- enough ESXi capacity for the build VM and ISO upload cache.
+
+The system disk uses an LSI Logic SAS controller by default; set
+`vsphere_disk_controller = "nvme"` to use NVMe instead. Both have drivers in
+Windows Setup. PVSCSI is not offered because Setup cannot see a PVSCSI disk
+unless its driver is loaded in the windowsPE pass, which this template does not do.
 
 Generate the variables from a build configuration, supply the temporary WinRM
 password through the environment, and build. The generated file contains no
@@ -104,6 +109,8 @@ secrets; `*.auto.pkrvars.hcl` and `build/` are ignored by Git.
 ./scripts/New-VdiBuild.ps1 -ConfigPath ./build.json -OutputDirectory ./build
 ./scripts/Test-PackerTemplate.ps1 -VariableFile ./build/build.auto.pkrvars.hcl
 $env:PKR_VAR_winrm_password = '<temporary password, 16+ characters>'
+$env:PKR_VAR_vsphere_username = '<vCenter service account>'
+$env:PKR_VAR_vsphere_password = '<vCenter password>'
 packer build -var-file ./build/build.auto.pkrvars.hcl `
     -var 'iso_url=file:///C:/ISO/Windows11.iso' `
     -var 'iso_checksum=sha256:<ISO checksum>' `
@@ -113,7 +120,7 @@ packer build -var-file ./build/build.auto.pkrvars.hcl `
 Alternatively, copy `packer/variables.pkrvars.example.hcl` to an ignored
 `packer/private.auto.pkrvars.hcl` and edit it by hand. `Test-PackerTemplate.ps1`
 runs `packer init`, `packer fmt -check`, and `packer validate` with obvious
-placeholders for the ISO and password, so it also works on a fresh clone.
+placeholders for vCenter, the ISO, and passwords, so it also works on a fresh clone.
 
 Confirm `windows_image_index` against your ISO with DISM before building; the
 default index is only an example. `ui_language` must be a language included in
@@ -121,10 +128,12 @@ the ISO; `locale` sets the input, system, and user locale, and `time_zone` takes
 a Windows time zone ID such as `E. South America Standard Time`. The WinRM password validator accepts a
 restricted XML-safe character set because it is rendered into unattended XML.
 
-The template pins the official Hyper-V plugin to `1.1.5`, creates a generation-2
-VM with Secure Boot, resolves packages from `config/application-catalog.json`, writes
-`C:\ProgramData\VdiImageFactory\image-manifest.json`, shuts down, and compacts
-the disk. Add organization-specific VDA installation and Windows Update stages
+The template pins the official VMware vSphere plugin to `2.5.0`, attaches the
+ESXi-hosted VMware Tools ISO so vCenter can report the guest IP, and creates a
+Windows 11 VM with UEFI Secure Boot and vTPM on ESXi, resolves packages from
+`config/application-catalog.json`, writes
+`C:\ProgramData\VdiImageFactory\image-manifest.json`, and shuts down the golden
+VM ready for a reviewed snapshot. Add organization-specific VDA installation and Windows Update stages
 before using the output in production.
 
 The unattended file contains a temporary local `packer` administrator. Rotate
@@ -205,7 +214,7 @@ shared-computer activation or channel control is required.
 
 Docker Desktop and Notepad++ are available in the library but are not selected
 by a default profile. Docker Desktop requires a separate licensing review, WSL 2
-or Hyper-V support, and nested virtualization. Include it only in a compatible
+or Windows hypervisor support, and nested virtualization. Include it only in a compatible
 developer image.
 
 Every sealed image manifest records the selected profile names and resolved

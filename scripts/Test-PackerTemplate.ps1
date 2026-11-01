@@ -3,8 +3,8 @@
 Initializes, format-checks, and validates the Packer template without real media.
 
 .DESCRIPTION
-The template requires an ISO location, checksum, and WinRM password, which a
-fresh clone does not have. This script supplies obviously fake placeholders so
+The template requires vCenter credentials, an ISO location, checksum, and a
+WinRM password, which a fresh clone does not have. This script supplies fake placeholders so
 the template can be validated anywhere; it never starts a build. Pass
 -VariableFile to validate a generated build.auto.pkrvars.hcl as well.
 
@@ -30,6 +30,14 @@ function Invoke-Packer {
 }
 
 $placeholders = @(
+    '-var', 'vsphere_server=vcenter.example.test',
+    '-var', 'vsphere_username=placeholder@example.test',
+    '-var', 'vsphere_password=Placeholder-vCenter-Password',
+    '-var', 'vsphere_datacenter=Placeholder-DC',
+    '-var', 'vsphere_cluster=Placeholder-Cluster',
+    '-var', 'vsphere_datastore=Placeholder-Datastore',
+    '-var', 'vsphere_folder=Templates/VDI',
+    '-var', 'vsphere_network=Placeholder-Network',
     '-var', 'iso_url=https://example.test/windows.iso',
     '-var', 'iso_checksum=sha256:0000000000000000000000000000000000000000000000000000000000000000',
     '-var', 'winrm_password=Placeholder-Password123'

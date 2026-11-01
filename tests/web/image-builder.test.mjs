@@ -68,13 +68,25 @@ test('packer variables match the golden file', () => {
   assert.equal(toPackerVariables(example), readText('tests/fixtures/build.example.pkrvars.hcl'));
 });
 
+test('playground emits vCenter and ESXi variables without Hyper-V settings', () => {
+  const config = applyPatch(example, {
+    'image.vsphere.cluster': '',
+    'image.vsphere.host': 'esxi01.corp.example.test',
+  });
+  const variables = toPackerVariables(config);
+  assert.match(variables, /vsphere_server\s+= "vcenter\.corp\.example\.test"/);
+  assert.match(variables, /vsphere_host\s+= "esxi01\.corp\.example\.test"/);
+  assert.doesNotMatch(variables, /vsphere_cluster\s+=/);
+  assert.doesNotMatch(variables, /switch_name|hyper-?v/i);
+});
+
 test('MCS plan matches the golden file', () => {
   assert.equal(toMcsPlanScript(example), readText('tests/fixtures/build.example.mcs-catalog-plan.ps1'));
 });
 
 test('HCL strings are escaped', () => {
-  const config = applyPatch(example, { 'image.hardware.switchName': 'Lab "A" \\ ${x}' });
-  assert.match(toPackerVariables(config), /switch_name\s+= "Lab \\"A\\" \\\\ \$\$\{x\}"/);
+  const config = applyPatch(example, { 'image.vsphere.network': 'Lab "A" \\ ${x}' });
+  assert.match(toPackerVariables(config), /vsphere_network\s+= "Lab \\"A\\" \\\\ \$\$\{x\}"/);
 });
 
 test('PowerShell strings in the MCS plan are escaped', () => {

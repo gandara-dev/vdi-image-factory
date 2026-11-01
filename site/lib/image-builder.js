@@ -11,13 +11,15 @@ export const LIMITS = Object.freeze({
   diskSizeMb: { min: 65536, max: 2097152, step: 1024 },
   windowsImageIndex: { min: 1, max: 32 },
   machineCount: { max: 1000 },
-  computerNameLength: 15,
+  adComputerNameLength: 15,
+  citrixObjectNameLength: 64,
+  vsphereEntityNameLength: 79,
 });
 
-const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{1,62}$/;
+const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{1,78}$/;
 const VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
 const CHECKSUM_PATTERN = /^sha256:[A-Fa-f0-9]{64}$/;
-const CITRIX_OBJECT_NAME_PATTERN = /^[^\\/;:#.*?=<>|[\]()"']{1,64}$/;
+const CITRIX_OBJECT_NAME_PATTERN = /^[^\\/;:#.*?=<>|[\]()"']+$/;
 const NAMING_SCHEME_PATTERN = /^[A-Za-z0-9#][A-Za-z0-9#-]*$/;
 const FQDN_PATTERN =
   /^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
@@ -147,8 +149,8 @@ export function validateConfiguration(config, reference) {
     add('', 'The configuration must be a JSON object.');
     return errors;
   }
-  if (config.schemaVersion !== 1) {
-    add('schemaVersion', 'Only schemaVersion 1 is supported.');
+  if (config.schemaVersion !== 2) {
+    add('schemaVersion', 'Only schemaVersion 2 is supported.');
   }
 
   const image = config.image;
@@ -170,11 +172,17 @@ export function validateConfiguration(config, reference) {
 }
 
 function validateImage(image, reference, add, errors) {
-  if (typeof image.name !== 'string' || !NAME_PATTERN.test(image.name)) {
-    add('image.name', 'Use 2-63 letters, digits, dots, hyphens, or underscores, starting with a letter or digit.');
+  const imageNameValid = typeof image.name === 'string' && NAME_PATTERN.test(image.name);
+  const imageVersionValid = typeof image.version === 'string' && VERSION_PATTERN.test(image.version);
+  if (!imageNameValid) {
+    add('image.name', 'Use 2-79 letters, digits, dots, hyphens, or underscores, starting with a letter or digit (the vCenter entity-name limit is 79).');
   }
-  if (typeof image.version !== 'string' || !VERSION_PATTERN.test(image.version)) {
+  if (!imageVersionValid) {
     add('image.version', 'Use 1-32 letters, digits, dots, hyphens, or underscores.');
+  }
+  if (imageNameValid && imageVersionValid &&
+      `${image.name}-${image.version}`.length > LIMITS.vsphereEntityNameLength) {
+    add('image.name', `The derived snapshot name (${image.name}-${image.version}) exceeds vCenter's ${LIMITS.vsphereEntityNameLength}-character limit.`);
   }
   checkRange(errors, 'image.windowsImageIndex', image.windowsImageIndex, LIMITS.windowsImageIndex);
   if (image.isoUrl !== undefined && typeof image.isoUrl !== 'string') {
@@ -185,6 +193,37 @@ function validateImage(image, reference, add, errors) {
     add('image.isoChecksum', 'Use sha256: followed by 64 hexadecimal characters.');
   }
 
+  const vsphere = image.vsphere;
+  if (!isObject(vsphere)) {
+    add('image.vsphere', 'The vSphere placement section is required.');
+  } else {
+    if (typeof vsphere.vcenterServer !== 'string' ||
+        (!FQDN_PATTERN.test(vsphere.vcenterServer) && !/^(?:\d{1,3}\.){3}\d{1,3}$/.test(vsphere.vcenterServer))) {
+      add('image.vsphere.vcenterServer', 'Enter the vCenter FQDN or IP address.');
+    }
+    for (const field of ['datacenter', 'datastore', 'folder', 'network']) {
+      const value = vsphere[field];
+      if (isBlank(value) || value.length > LIMITS.vsphereEntityNameLength) {
+        add(`image.vsphere.${field}`, `Enter a vCenter inventory name from 1 to ${LIMITS.vsphereEntityNameLength} characters.`);
+      }
+    }
+    if (isBlank(vsphere.cluster) && isBlank(vsphere.host)) {
+      add('image.vsphere.cluster', 'Enter a cluster, an ESXi host, or both when the cluster does not use DRS.');
+    } else if (vsphere.cluster !== undefined && vsphere.cluster !== '' &&
+               (isBlank(vsphere.cluster) || vsphere.cluster.trim() !== vsphere.cluster ||
+                vsphere.cluster.length > LIMITS.vsphereEntityNameLength)) {
+      add('image.vsphere.cluster', `The optional cluster name cannot exceed ${LIMITS.vsphereEntityNameLength} characters.`);
+    }
+    if (vsphere.host !== undefined && vsphere.host !== '' &&
+        (isBlank(vsphere.host) || vsphere.host.trim() !== vsphere.host ||
+         vsphere.host.length > LIMITS.vsphereEntityNameLength)) {
+      add('image.vsphere.host', `The optional ESXi host name cannot exceed ${LIMITS.vsphereEntityNameLength} characters.`);
+    }
+    if (typeof vsphere.insecureConnection !== 'boolean') {
+      add('image.vsphere.insecureConnection', 'Must be true or false. Keep false when vCenter has a trusted certificate.');
+    }
+  }
+
   const hardware = image.hardware;
   if (!isObject(hardware)) {
     add('image.hardware', 'The hardware section is required.');
@@ -192,9 +231,6 @@ function validateImage(image, reference, add, errors) {
     checkRange(errors, 'image.hardware.cpus', hardware.cpus, LIMITS.cpus);
     checkRange(errors, 'image.hardware.memoryMb', hardware.memoryMb, LIMITS.memoryMb);
     checkRange(errors, 'image.hardware.diskSizeMb', hardware.diskSizeMb, LIMITS.diskSizeMb);
-    if (isBlank(hardware.switchName) || hardware.switchName.length > 64) {
-      add('image.hardware.switchName', 'Enter the Hyper-V virtual switch name (up to 64 characters).');
-    }
   }
 
   const regional = image.regional;
@@ -265,8 +301,9 @@ function validateApplications(applications, catalog, add) {
 function validateMcs(mcs, add, errors) {
   for (const field of ['catalogName', 'provisioningSchemeName']) {
     const value = mcs[field];
-    if (typeof value !== 'string' || value.trim() !== value || !CITRIX_OBJECT_NAME_PATTERN.test(value)) {
-      add(`mcs.${field}`, 'Use 1-64 characters without \\ / ; : # . * ? = < > | [ ] ( ) quotes or edge spaces.');
+    if (typeof value !== 'string' || value.trim() !== value ||
+        value.length > LIMITS.citrixObjectNameLength || !CITRIX_OBJECT_NAME_PATTERN.test(value)) {
+      add(`mcs.${field}`, `Use 1-${LIMITS.citrixObjectNameLength} characters without \\ / ; : # . * ? = < > | [ ] ( ) quotes or edge spaces.`);
     }
   }
   if (isBlank(mcs.hostingUnitName) || mcs.hostingUnitName.length > 64) {
@@ -278,8 +315,8 @@ function validateMcs(mcs, add, errors) {
   if (typeof scheme !== 'string' || !NAMING_SCHEME_PATTERN.test(scheme) ||
       (scheme.match(/#+/g) || []).length !== 1 || !/[A-Za-z]/.test(scheme)) {
     add('mcs.namingScheme', 'Use letters, digits, and hyphens with exactly one run of # (for example VDI-W11-###).');
-  } else if (scheme.length > LIMITS.computerNameLength) {
-    add('mcs.namingScheme', `Computer names cannot exceed ${LIMITS.computerNameLength} characters.`);
+  } else if (scheme.length > LIMITS.adComputerNameLength) {
+    add('mcs.namingScheme', `The complete machine name, including digits, cannot exceed the Active Directory limit of ${LIMITS.adComputerNameLength} characters (and therefore remains below vCenter's 79-character limit).`);
   } else {
     digits = namingSchemeDigits(scheme);
   }
@@ -340,11 +377,18 @@ export function toPackerVariables(config) {
   entries.push(
     ['image_name', hclString(image.name)],
     ['image_version', hclString(image.version)],
+    ['vsphere_server', hclString(image.vsphere.vcenterServer)],
+    ['vsphere_datacenter', hclString(image.vsphere.datacenter)],
+    ...(image.vsphere.cluster ? [['vsphere_cluster', hclString(image.vsphere.cluster)]] : []),
+    ...(image.vsphere.host ? [['vsphere_host', hclString(image.vsphere.host)]] : []),
+    ['vsphere_datastore', hclString(image.vsphere.datastore)],
+    ['vsphere_folder', hclString(image.vsphere.folder)],
+    ['vsphere_network', hclString(image.vsphere.network)],
+    ['vsphere_insecure_connection', image.vsphere.insecureConnection ? 'true' : 'false'],
     ['windows_image_index', String(image.windowsImageIndex)],
     ['cpus', String(image.hardware.cpus)],
     ['memory_mb', String(image.hardware.memoryMb)],
     ['disk_size_mb', String(image.hardware.diskSizeMb)],
-    ['switch_name', hclString(image.hardware.switchName)],
     ['ui_language', hclString(image.regional.uiLanguage)],
     ['locale', hclString(image.regional.locale)],
     ['time_zone', hclString(image.regional.timeZone)],
@@ -358,8 +402,8 @@ export function toPackerVariables(config) {
   const width = Math.max(...entries.map(([key]) => key.length));
   const lines = [
     '# Generated by the VDI Image Factory Image Builder. This file contains no secrets.',
-    '# Supply the temporary WinRM password separately, for example through',
-    '# the PKR_VAR_winrm_password environment variable.',
+    '# Supply vCenter credentials and the temporary WinRM password separately through',
+    '# PKR_VAR_vsphere_username, PKR_VAR_vsphere_password, and PKR_VAR_winrm_password.',
   ];
   for (const [key, value] of entries) {
     lines.push(`${key.padEnd(width)} = ${value}`);
@@ -460,7 +504,9 @@ export function toCommands(config) {
     '# 1. Validate the configuration, simulate the pipeline, and write the build files.',
     './scripts/New-VdiBuild.ps1 -ConfigPath ./build.json -OutputDirectory ./build',
     '',
-    '# 2. Build the golden image on a Hyper-V host (licensed ISO required).',
+    '# 2. Build the golden image through vCenter on the target ESXi cluster (licensed ISO required).',
+    "$env:PKR_VAR_vsphere_username = '<vCenter service account>'",
+    "$env:PKR_VAR_vsphere_password = '<vCenter password>'",
     "$env:PKR_VAR_winrm_password = '<temporary password, 16+ characters>'",
     'packer init ./packer',
     build.join(' `\n    '),

@@ -1,16 +1,25 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "image": {
     "name": "vdi-win11-engineering",
     "version": "2026.09.1",
     "windowsImageIndex": 6,
     "isoUrl": "",
     "isoChecksum": "",
+    "vsphere": {
+      "vcenterServer": "vcenter.corp.example.test",
+      "datacenter": "Primary-DC",
+      "cluster": "VDI-Cluster",
+      "host": "",
+      "datastore": "VDI-Datastore",
+      "folder": "Templates/VDI",
+      "network": "VDI-Build",
+      "insecureConnection": false
+    },
     "hardware": {
       "cpus": 4,
       "memoryMb": 8192,
-      "diskSizeMb": 81920,
-      "switchName": "Default Switch"
+      "diskSizeMb": 81920
     },
     "regional": {
       "uiLanguage": "en-US",

@@ -52,7 +52,7 @@
         </div>
         <fieldset>
           <legend>Installation media <span class="optional">optional here</span></legend>
-          <p class="note">Leave these empty to pass them to Packer at build time. The ISO never leaves your Hyper-V host.</p>
+          <p class="note">Leave these empty to pass them to Packer at build time. Packer uploads local media only to the selected vSphere datastore cache.</p>
           <div class="field">
             <label for="f-iso">ISO path or URL</label>
             <input id="f-iso" type="text" data-path="image.isoUrl" placeholder="file:///C:/ISO/Windows11.iso" autocomplete="off" spellcheck="false">
@@ -69,7 +69,7 @@
       <!-- 2. Build VM -->
       <section class="step" data-step="vm" aria-labelledby="h-vm" hidden>
         <h1 id="h-vm">Build VM</h1>
-        <p class="lead">The temporary Hyper-V VM that Packer creates to install Windows. It is deleted after the image is exported, so its size does not decide the size of your desktops.</p>
+        <p class="lead">The golden VM that Packer creates through vCenter on ESXi. Its size does not decide the size of your MCS desktops.</p>
         <div class="row">
           <div class="field">
             <label for="f-cpus">vCPUs</label>
@@ -88,12 +88,61 @@
             <span class="error" data-error-for="image.hardware.diskSizeMb"></span>
           </div>
         </div>
-        <div class="field">
-          <label for="f-switch">Hyper-V virtual switch</label>
-          <input id="f-switch" type="text" data-path="image.hardware.switchName" autocomplete="off">
-          <span class="help">Needs internet access for WinGet. Generation 2 with Secure Boot is always used.</span>
-          <span class="error" data-error-for="image.hardware.switchName"></span>
-        </div>
+        <fieldset>
+          <legend>vCenter and ESXi placement</legend>
+          <div class="row">
+            <div class="field">
+              <label for="f-vcenter">vCenter Server</label>
+              <input id="f-vcenter" type="text" data-path="image.vsphere.vcenterServer" autocomplete="off" spellcheck="false">
+              <span class="error" data-error-for="image.vsphere.vcenterServer"></span>
+            </div>
+            <div class="field">
+              <label for="f-datacenter">Datacenter</label>
+              <input id="f-datacenter" type="text" data-path="image.vsphere.datacenter" autocomplete="off">
+              <span class="error" data-error-for="image.vsphere.datacenter"></span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="f-cluster">Cluster <span class="optional">optional for standalone ESXi</span></label>
+              <input id="f-cluster" type="text" data-path="image.vsphere.cluster" autocomplete="off">
+              <span class="help">Enter a cluster, a host, or both for a non-DRS cluster.</span>
+              <span class="error" data-error-for="image.vsphere.cluster"></span>
+            </div>
+            <div class="field">
+              <label for="f-host">ESXi host <span class="optional">optional with DRS</span></label>
+              <input id="f-host" type="text" data-path="image.vsphere.host" autocomplete="off" spellcheck="false">
+              <span class="help">Set this when DRS cannot select a host.</span>
+              <span class="error" data-error-for="image.vsphere.host"></span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="f-datastore">Datastore</label>
+              <input id="f-datastore" type="text" data-path="image.vsphere.datastore" autocomplete="off">
+              <span class="error" data-error-for="image.vsphere.datastore"></span>
+            </div>
+            <div class="field">
+              <label for="f-folder">VM folder</label>
+              <input id="f-folder" type="text" data-path="image.vsphere.folder" autocomplete="off">
+              <span class="error" data-error-for="image.vsphere.folder"></span>
+            </div>
+            <div class="field">
+              <label for="f-network">Port group</label>
+              <input id="f-network" type="text" data-path="image.vsphere.network" autocomplete="off">
+              <span class="help">Needs internet access for WinGet.</span>
+              <span class="error" data-error-for="image.vsphere.network"></span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-insecure">vCenter certificate validation</label>
+            <select id="f-insecure" data-path="image.vsphere.insecureConnection" data-type="bool">
+              <option value="false">Require a trusted certificate</option>
+              <option value="true">Skip validation (lab only)</option>
+            </select>
+            <span class="error" data-error-for="image.vsphere.insecureConnection"></span>
+          </div>
+        </fieldset>
       </section>
 
       <!-- 3. Region -->
@@ -171,13 +220,14 @@
             <legend>Catalog</legend>
             <div class="field">
               <label for="m-catalog">Catalog name</label>
-              <input id="m-catalog" type="text" data-path="mcs.catalogName" autocomplete="off">
+              <input id="m-catalog" type="text" maxlength="64" data-path="mcs.catalogName" autocomplete="off">
+              <span class="help">Citrix catalog and identity-pool names are limited to 64 characters.</span>
               <span class="error" data-error-for="mcs.catalogName"></span>
             </div>
             <div class="row">
               <div class="field">
                 <label for="m-scheme">Provisioning scheme</label>
-                <input id="m-scheme" type="text" data-path="mcs.provisioningSchemeName" autocomplete="off">
+                <input id="m-scheme" type="text" maxlength="64" data-path="mcs.provisioningSchemeName" autocomplete="off">
                 <span class="error" data-error-for="mcs.provisioningSchemeName"></span>
               </div>
               <div class="field">
@@ -222,7 +272,7 @@
             <legend>Active Directory computer accounts</legend>
             <div class="field">
               <label for="m-naming">Account naming scheme</label>
-              <input id="m-naming" type="text" data-path="mcs.namingScheme" autocomplete="off" spellcheck="false">
+              <input id="m-naming" type="text" maxlength="15" data-path="mcs.namingScheme" autocomplete="off" spellcheck="false">
               <span class="help" id="names-preview"></span>
               <span class="error" data-error-for="mcs.namingScheme"></span>
             </div>
@@ -249,7 +299,7 @@
         <h2>What the build does</h2>
         <ol class="plan" id="plan"></ol>
         <h2>Files</h2>
-        <p class="note">Save the files into the project folder and run the commands on your Hyper-V host. This page never contacts a hypervisor or a Citrix site.</p>
+        <p class="note">Save the files into the project folder and run the commands from a Packer runner that can reach vCenter and the build VM. This page never contacts vCenter, ESXi, or a Citrix site.</p>
         <div class="files" id="files"></div>
       </section>
 
@@ -264,7 +314,7 @@
 
   <footer class="page-foot">
     Validation uses the same rules as <code>Test-VdiBuildConfiguration</code>. A real build still needs licensed
-    media, a Hyper-V host, and the checks in the
+    media, vCenter/ESXi access, and the checks in the
     <a href="https://github.com/gandara-dev/vdi-image-factory/blob/main/docs/release-verification.md">release verification</a> guide.
   </footer>
 

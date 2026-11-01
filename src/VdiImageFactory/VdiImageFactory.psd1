@@ -1,6 +1,6 @@
 @{
     RootModule = 'VdiImageFactory.psm1'
-    ModuleVersion = '0.4.2'
+    ModuleVersion = '0.5.0'
     GUID = 'dd923999-330c-43ee-8f3f-7e79ddc90c8a'
     Author = 'Mateus Gandara'
     CompanyName = 'Community'
@@ -25,7 +25,7 @@
     AliasesToExport = @()
     PrivateData = @{
         PSData = @{
-            Tags = @('Citrix', 'VDI', 'Packer', 'MCS', 'GoldenImage')
+            Tags = @('Citrix', 'VDI', 'Packer', 'MCS', 'GoldenImage', 'VMware', 'vSphere')
             LicenseUri = 'https://github.com/gandara-dev/vdi-image-factory/blob/main/LICENSE'
             ProjectUri = 'https://github.com/gandara-dev/vdi-image-factory'
         }
